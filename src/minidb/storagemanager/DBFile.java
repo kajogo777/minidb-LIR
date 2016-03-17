@@ -7,10 +7,10 @@ public class DBFile extends AbstractDBFile{
 	private int blockSize;
 
 	public DBFile(String fileName, int numBlocks, int blcks){
-		setBlockSize(blcks);
-		setTotalNumOfBlocks(numBlocks);
-		setCurBlockPos(0);
-		setFileName(fileName);
+		blockSize = blcks;
+		totalNumOfBlocks = numBlocks;
+		curBlockPos = 1;
+		fileName = fileName;
 	}
 			
 	public int getBlockSize() {
@@ -23,7 +23,7 @@ public class DBFile extends AbstractDBFile{
 
 	@Override
 	public int getFileSize() {
-		return getBlockSize() * getTotalNumOfBlocks();
+		return getBlockSize() * totalNumOfBlocks;
 	}
 	
 	

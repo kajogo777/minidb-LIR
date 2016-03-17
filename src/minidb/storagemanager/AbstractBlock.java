@@ -4,7 +4,7 @@ package minidb.storagemanager;
 
 public abstract class AbstractBlock {
 
-	private byte[] data;
+	protected byte[] data;//changed from private to protected
 	
 	public AbstractBlock(){
 		
