@@ -4,26 +4,26 @@ import java.util.ArrayList;
 
 public class DBFile extends AbstractDBFile{
 	
-	private ArrayList<Block> blocks;
-	
-	public ArrayList<Block> getBlocks() {
-		return blocks;
-	}
+	private int blockSize;
 
-	public void setBlocks(ArrayList<Block> blocks) {
-		this.blocks = blocks;
-	}
-
-	public DBFile(String fileName, int numBlocks){
-		blocks = new ArrayList<Block>(numBlocks);
+	public DBFile(String fileName, int numBlocks, int blcks){
+		setBlockSize(blcks);
 		setTotalNumOfBlocks(numBlocks);
 		setCurBlockPos(0);
 		setFileName(fileName);
 	}
 			
+	public int getBlockSize() {
+		return blockSize;
+	}
+
+	public void setBlockSize(int blockSize) {
+		this.blockSize = blockSize;
+	}
+
 	@Override
 	public int getFileSize() {
-		return blocks.get(0).getData().length * getTotalNumOfBlocks();
+		return getBlockSize() * getTotalNumOfBlocks();
 	}
 	
 	

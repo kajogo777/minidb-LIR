@@ -25,73 +25,28 @@ public class StorageManager implements IStorageManager{
 		int blockSize = Integer.parseInt(reader.readLine().split("=")[1]);
 		reader.close();
         
-        DBFile fileHandler = new DBFile(fileName, 1);
-        Block blk = new Block(blockSize);
-        fileHandler.getBlocks().add(blk);
+        DBFile fileHandler = new DBFile(fileName, 1, blockSize);
+        
+        byte[] header = String.format("numOfBlocks=%d,blockSize=%d",1,blockSize).getBytes(Charset.forName("UTF-8"));
+        
+        Block headerBlk = new Block(blockSize);
+        headerBlk.setData(header);
+        
+        Path file = Paths.get(fileHandler.getFileName());
+        Files.write(file, headerBlk.getData());
         
         return fileHandler;
 	}
 
 	@Override
 	public AbstractDBFile openFile(String fileName) throws IOException {
-		Path file = Paths.get(fileName);
-		byte[] data = Files.readAllBytes(file);
-		
-		BufferedReader reader = Files.newBufferedReader(Paths.get("./minidb-LIR/conf/minidb.config"));
-		int blockSize = Integer.parseInt(reader.readLine().split("=")[1]);
-		reader.close();
-		
-		String dlr = "$";
-		byte bdlr = dlr.getBytes("UTF-8")[0];
-		boolean founddlr = false;
-		String header = "";
-		//String[] info;
-		
-		DBFile fileHandler;
-		
-		
-		for(byte b : data)
-		{
-			if(!founddlr)
-			{
-				if(b ==  bdlr)
-				{
-					founddlr = true;
-					//info = header.split(",");
-					fileHandler = new DBFile(fileName, Integer.parseInt(header));
-				}else{
-					byte[] chr = { b };
-					header += new String( chr, Charset.forName("UTF-8"));
-				}
-			}else{
-				
-			}
-		}
-		
 		
 		return null;
 	}
 
 	@Override
 	public void closeFile(AbstractDBFile f) throws IOException {
-		// TODO check if file exist
-		Path file = Paths.get(f.getFileName());
 
-		if(! new File(f.getFileName()).exists())
-			Files.createFile(file);
-		
-		String header = f.getTotalNumOfBlocks() + "," + f.getFileSize()/f.getTotalNumOfBlocks() + "$";
-		
-		byte[] allData = header.getBytes(Charset.forName("UTF-8"));
-	
-		for(Block b : ((DBFile)f).getBlocks()){
-			byte[] tempData = new byte[allData.length + b.getData().length];
-			System.arraycopy(allData, 0, tempData, 0, allData.length);
-			System.arraycopy(b.getData(), 0, tempData, allData.length, b.getData().length);
-			allData = tempData;
-		}
-		
-		Files.write(file, allData);	
 	}
 
 	@Override
