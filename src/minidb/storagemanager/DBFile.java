@@ -9,8 +9,8 @@ public class DBFile extends AbstractDBFile{
 	public DBFile(String fileName, int numBlocks, int blcks){
 		blockSize = blcks;
 		totalNumOfBlocks = numBlocks;
-		curBlockPos = 1;
-		fileName = fileName;
+		curBlockPos = 0;
+		this.fileName = fileName;
 	}
 			
 	public int getBlockSize() {

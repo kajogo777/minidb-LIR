@@ -15,13 +15,20 @@ public class StorageManager implements IStorageManager{
 	
 	private final int headerSize = 4000;
 	private int blockSize;
+	private String myProjPath = System.getProperty("user.dir") + "/";
 
+	
+	public StorageManager()
+	{
+		init();
+	}
+	
 	@Override
 	public void init() {	
 		BufferedReader reader;
 		try {
-			reader = Files.newBufferedReader(Paths.get("./minidb-LIR/conf/minidb.config"));
-			blockSize = Integer.parseInt(reader.readLine().split("=")[1]);
+			reader = Files.newBufferedReader(Paths.get(myProjPath + "conf/minidb.config"));
+			blockSize = 4096;//Integer.parseInt(reader.readLine().split("=")[1]);
 			reader.close();
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -30,19 +37,20 @@ public class StorageManager implements IStorageManager{
 
 	@Override
 	public AbstractDBFile createFile(String fileName) throws IOException {
-        
+		
         DBFile fileHandler = new DBFile(fileName, 1, blockSize);
         
-        byte[] header = String.format("%d,%d",1,blockSize).getBytes(Charset.forName("UTF-8"));// num of blocks, blocksize
+        byte[] header = String.format("%d,%d",1,blockSize).getBytes();// num of blocks, blocksize
         
         Block headerBlk = new Block(headerSize);
         headerBlk.setData(header);
         
         Block emptyBlk = new Block(blockSize);
-        
-        Path file = Paths.get(fileHandler.fileName);
-        Files.write(file, headerBlk.getData());
-        Files.write(file, emptyBlk.getData());      
+
+        RandomAccessFile file = new RandomAccessFile(myProjPath + fileName, "rw");	
+        file.write(headerBlk.getData(), 0, headerSize);
+		file.write(emptyBlk.getData(), 0, blockSize);
+		file.close();
         
         return fileHandler;
 	}
@@ -51,23 +59,32 @@ public class StorageManager implements IStorageManager{
 	public AbstractDBFile openFile(String fileName) throws IOException {
 		//Path filep = Paths.get(fileName);
 		
-		RandomAccessFile file = new RandomAccessFile(fileName, "rw");
+		RandomAccessFile file = new RandomAccessFile(myProjPath +fileName, "rw");
 
 		byte[] aByte = new byte[headerSize];
 		
 		file.read(aByte, 0, headerSize);
 		file.close();
 		
-		String[] headerValues = (new String(aByte, "UTF-8")).split(",");
-		
-		DBFile fileHandler = new DBFile(fileName, Integer.parseInt(headerValues[0]), Integer.parseInt(headerValues[1]));
+		String[] headerValues = (new String(aByte)).split(",");
+
+		DBFile fileHandler = new DBFile(fileName, Integer.parseInt(headerValues[0]), Integer.parseInt(headerValues[1].split("\u0000")[0]));
 		
 		return fileHandler;
 	}
 
 	@Override
 	public void closeFile(AbstractDBFile f) throws IOException {
+			DBFile fh = (DBFile) f;
+		
+		    byte[] header = String.format("%d,%d",fh.totalNumOfBlocks,fh.getBlockSize()).getBytes();// num of blocks, blocksize
+	        
+	        Block headerBlk = new Block(headerSize);
+	        headerBlk.setData(header);
 
+	        RandomAccessFile file = new RandomAccessFile(myProjPath + fh.fileName, "rw");	
+	        file.write(headerBlk.getData(), 0, headerSize);
+			file.close();
 	}
 
 	@Override
@@ -77,7 +94,7 @@ public class StorageManager implements IStorageManager{
 	      
 	      try{
 	         
-	         f = new File(fileName);
+	         f = new File(myProjPath +fileName);
 	         
 	         bool = f.delete();
 	         
@@ -94,13 +111,13 @@ public class StorageManager implements IStorageManager{
 		
 		DBFile fh = (DBFile) f;
 		
-		RandomAccessFile file = new RandomAccessFile(f.fileName, "rw");
+		RandomAccessFile file = new RandomAccessFile(myProjPath +f.fileName, "rw");
 		
 		Block blk = new Block(fh.getBlockSize());
 
 		byte[] aByte = new byte[fh.getBlockSize()];
 		
-		file.seek(headerSize + (blockNum-1) * fh.getBlockSize());
+		file.seek(headerSize + (blockNum) * fh.getBlockSize());
 		file.read(aByte, 0, fh.getBlockSize());
 		file.close();
 		blk.setData(aByte);
@@ -116,98 +133,30 @@ public class StorageManager implements IStorageManager{
 
 	@Override
 	public AbstractBlock readFirstBlock(AbstractDBFile f) throws IOException {
-		//return readBlock(1, f);
-		DBFile fh = (DBFile) f;
-		
-		RandomAccessFile file = new RandomAccessFile(f.fileName, "rw");
-		
-		Block blk = new Block(fh.getBlockSize());
-
-		byte[] aByte = new byte[fh.getBlockSize()];
-		
-		file.seek(headerSize);
-		file.read(aByte, 0, fh.getBlockSize());
-		file.close();
-		blk.setData(aByte);
-		f.curBlockPos = 1;
-		
-		return blk;
+		return readBlock(1, f);
 	}
 
 	@Override
 	public AbstractBlock readPreviousBlock(AbstractDBFile f) throws IOException {
 		DBFile fh = (DBFile) f;
-		
-		RandomAccessFile file = new RandomAccessFile(f.fileName, "rw");
-		
-		Block blk = new Block(fh.getBlockSize());
-
-		byte[] aByte = new byte[fh.getBlockSize()];
-		
-		file.seek(headerSize + (f.curBlockPos -2)* fh.getBlockSize() );
-		file.read(aByte, 0, fh.getBlockSize());
-		file.close();
-		blk.setData(aByte);
-		f.curBlockPos = f.curBlockPos -1;
-		
-		return blk;
+		return readBlock(fh.curBlockPos -1, f);
 	}
 
 	@Override
 	public AbstractBlock readCurrentBlock(AbstractDBFile f) throws IOException {
 		DBFile fh = (DBFile) f;
-		
-		RandomAccessFile file = new RandomAccessFile(f.fileName, "rw");
-		
-		Block blk = new Block(fh.getBlockSize());
-
-		byte[] aByte = new byte[fh.getBlockSize()];
-		
-		file.seek(headerSize + (f.curBlockPos -1)* fh.getBlockSize() );
-		file.read(aByte, 0, fh.getBlockSize());
-		file.close();
-		blk.setData(aByte);
-		f.curBlockPos = f.curBlockPos;
-		
-		return blk;
+		return readBlock(fh.curBlockPos, f);
 	}
 
 	@Override
 	public AbstractBlock readNextBlock(AbstractDBFile f) throws IOException {
 		DBFile fh = (DBFile) f;
-		
-		RandomAccessFile file = new RandomAccessFile(f.fileName, "rw");
-		
-		Block blk = new Block(fh.getBlockSize());
-
-		byte[] aByte = new byte[fh.getBlockSize()];
-		
-		file.seek(headerSize + (f.curBlockPos)* fh.getBlockSize() );
-		file.read(aByte, 0, fh.getBlockSize());
-		file.close();
-		blk.setData(aByte);
-		f.curBlockPos = f.curBlockPos +1;
-		
-		return blk;
+		return readBlock(fh.curBlockPos +1, f);
 	}
 
 	@Override
 	public AbstractBlock readLastBlock(AbstractDBFile f) throws IOException {
-		DBFile fh = (DBFile) f;
-		
-		RandomAccessFile file = new RandomAccessFile(f.fileName, "rw");
-		
-		Block blk = new Block(fh.getBlockSize());
-
-		byte[] aByte = new byte[fh.getBlockSize()];
-		
-		file.seek(headerSize + (f.totalNumOfBlocks -1)* fh.getBlockSize() );
-		file.read(aByte, 0, fh.getBlockSize());
-		file.close();
-		blk.setData(aByte);
-		f.curBlockPos = f.totalNumOfBlocks;
-		
-		return blk;
+		return readBlock(f.totalNumOfBlocks -1, f);
 	}
 
 	@Override
@@ -215,9 +164,9 @@ public class StorageManager implements IStorageManager{
 		DBFile fh = (DBFile) f;
 		Block blk = (Block) b;
 		
-		RandomAccessFile file = new RandomAccessFile(f.fileName, "rw");
+		RandomAccessFile file = new RandomAccessFile(myProjPath +f.fileName, "rw");
 		
-		file.seek(headerSize + (blockNum -1)* fh.getBlockSize() );
+		file.seek(headerSize + (blockNum)* fh.getBlockSize() );
 		file.write(blk.getData(), 0, fh.getBlockSize());
 		file.close();
 		f.curBlockPos = blockNum;
@@ -234,7 +183,7 @@ public class StorageManager implements IStorageManager{
 		Block blk = new Block(fh.getBlockSize());
 		fh.totalNumOfBlocks = fh.totalNumOfBlocks +1;
 		
-		writeBlock(fh.totalNumOfBlocks, f, blk);
+		writeBlock(fh.totalNumOfBlocks -1, f, blk);
 	}
 	
 	
