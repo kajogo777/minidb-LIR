@@ -164,12 +164,15 @@ public class StorageManager implements IStorageManager{
 		DBFile fh = (DBFile) f;
 		Block blk = (Block) b;
 		
+		if(blockNum >= fh.totalNumOfBlocks)
+			fh.totalNumOfBlocks++;
+		
 		RandomAccessFile file = new RandomAccessFile(myProjPath +f.fileName, "rw");
 		
 		file.seek(headerSize + (blockNum)* fh.getBlockSize() );
 		file.write(blk.getData(), 0, fh.getBlockSize());
 		file.close();
-		f.curBlockPos = blockNum;
+		f.curBlockPos = blockNum + 1;
 	}
 
 	@Override
