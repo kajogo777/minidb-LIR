@@ -224,6 +224,8 @@ public class StorageManagerTests extends TestCase {
 		   manager.writeCurrentBlock(file2, block2);
 		   
 		   byte [] read = manager.readFirstBlock(file1).getData();
+		   System.out.println(read[0]);
+		   System.out.println(write1[0]);
 
 		   assertTrue(areEqual(read,write1));
 	   }

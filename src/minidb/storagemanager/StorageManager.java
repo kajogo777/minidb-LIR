@@ -133,7 +133,7 @@ public class StorageManager implements IStorageManager{
 
 	@Override
 	public AbstractBlock readFirstBlock(AbstractDBFile f) throws IOException {
-		return readBlock(1, f);
+		return readBlock(0, f);
 	}
 
 	@Override
