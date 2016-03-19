@@ -9,18 +9,21 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 public class StorageManager implements IStorageManager{
 	
-	private final int headerSize = 512;
+	public static final int headerSize = 512;
 	private int blockSize;
 	private String myProjPath = System.getProperty("user.dir") + "/";
+	private ArrayList<AbstractDBFile> myOpenDBFiles;
 
 	
 	public StorageManager()
 	{
 		init();
+		myOpenDBFiles = new ArrayList<AbstractDBFile>();
 	}
 	
 	@Override
@@ -47,29 +50,29 @@ public class StorageManager implements IStorageManager{
         
         Block emptyBlk = new Block(blockSize);
 
-        RandomAccessFile file = new RandomAccessFile(myProjPath + fileName, "rw");	
-        file.write(headerBlk.getData(), 0, headerSize);
-		file.write(emptyBlk.getData(), 0, blockSize);
-		file.close();
+        fileHandler.getOnDiskFile().write(headerBlk.getData(), 0, headerSize);
+        fileHandler.changeOnDiskPointer(0);
+        fileHandler.getOnDiskFile().write(emptyBlk.getData(), 0, blockSize);
+        
+        myOpenDBFiles.add(fileHandler);
         
         return fileHandler;
 	}
 
 	@Override
-	public AbstractDBFile openFile(String fileName) throws IOException {
-		//Path filep = Paths.get(fileName);
-		
+	public AbstractDBFile openFile(String fileName) throws IOException {	
 		RandomAccessFile file = new RandomAccessFile(myProjPath +fileName, "rw");
 
 		byte[] aByte = new byte[headerSize];
 		
 		file.read(aByte, 0, headerSize);
-		file.close();
 		
 		String[] headerValues = (new String(aByte)).split(",");
 
 		DBFile fileHandler = new DBFile(fileName, Integer.parseInt(headerValues[0]), Integer.parseInt(headerValues[1].split("\u0000")[0]));
+		fileHandler.setOnDiskFile(file);
 		
+		myOpenDBFiles.add(fileHandler);
 		return fileHandler;
 	}
 
@@ -82,9 +85,10 @@ public class StorageManager implements IStorageManager{
 	        Block headerBlk = new Block(headerSize);
 	        headerBlk.setData(header);
 
-	        RandomAccessFile file = new RandomAccessFile(myProjPath + fh.fileName, "rw");	
-	        file.write(headerBlk.getData(), 0, headerSize);
-			file.close();
+			fh.getOnDiskFile().write(headerBlk.getData(), 0, headerSize);
+			fh.getOnDiskFile().close();
+			
+			myOpenDBFiles.remove(f);
 	}
 
 	@Override
@@ -111,17 +115,14 @@ public class StorageManager implements IStorageManager{
 		
 		DBFile fh = (DBFile) f;
 		
-		RandomAccessFile file = new RandomAccessFile(myProjPath +f.fileName, "rw");
-		
 		Block blk = new Block(fh.getBlockSize());
 
 		byte[] aByte = new byte[fh.getBlockSize()];
 		
-		file.seek(headerSize + (blockNum) * fh.getBlockSize());
-		file.read(aByte, 0, fh.getBlockSize());
-		file.close();
+		fh.changeOnDiskPointer(blockNum);
+		fh.getOnDiskFile().read(aByte, 0, fh.getBlockSize());
 		blk.setData(aByte);
-		f.curBlockPos = blockNum;
+		fh.curBlockPos++;
 		
 		return blk;
 	}
@@ -167,12 +168,9 @@ public class StorageManager implements IStorageManager{
 		if(blockNum >= fh.totalNumOfBlocks)
 			fh.totalNumOfBlocks++;
 		
-		RandomAccessFile file = new RandomAccessFile(myProjPath +f.fileName, "rw");
-		
-		file.seek(headerSize + (blockNum)* fh.getBlockSize() );
-		file.write(blk.getData(), 0, fh.getBlockSize());
-		file.close();
-		f.curBlockPos = blockNum + 1;
+		fh.changeOnDiskPointer(blockNum);
+		fh.getOnDiskFile().write(blk.getData(), 0, fh.getBlockSize());
+		f.curBlockPos++;
 	}
 
 	@Override
