@@ -13,7 +13,7 @@ import java.util.Arrays;
 
 public class StorageManager implements IStorageManager{
 	
-	private final int headerSize = 4000;
+	private final int headerSize = 512;
 	private int blockSize;
 	private String myProjPath = System.getProperty("user.dir") + "/";
 
@@ -28,7 +28,7 @@ public class StorageManager implements IStorageManager{
 		BufferedReader reader;
 		try {
 			reader = Files.newBufferedReader(Paths.get(myProjPath + "conf/minidb.config"));
-			blockSize = 4096;//Integer.parseInt(reader.readLine().split("=")[1]);
+			blockSize = Integer.parseInt(reader.readLine().split("=")[1]);
 			reader.close();
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -40,7 +40,7 @@ public class StorageManager implements IStorageManager{
 		
         DBFile fileHandler = new DBFile(fileName, 1, blockSize);
         
-        byte[] header = String.format("%d,%d",1,blockSize).getBytes();// num of blocks, blocksize
+        byte[] header = String.format("%d,%d", 1, blockSize).getBytes();// num of blocks, blocksize
         
         Block headerBlk = new Block(headerSize);
         headerBlk.setData(header);
