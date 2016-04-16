@@ -41,6 +41,25 @@ public class RecordManager implements IRecordManager{
 			String[] references) throws AbstractRecordManagerException {
 		// TODO Auto-generated method stub
 		
+		StorageManager storagemanager = new StorageManager();
+		try {
+			DBFile NewFile = (DBFile)storagemanager.createFile(tableName);
+		 
+			Block block = new Block(NewFile.getBlockSize());
+			storagemanager.writeBlock(0, NewFile,block);
+			
+			String metaInfo = "";
+			
+			for (int i =0;i<columnNames.length;i++){
+				metaInfo += String.format("%s$%s$%s$%s/", columnNames[i], dataTypes[i], isKey[i], references[i]);
+			}	
+			
+			block.setData(metaInfo.getBytes());
+			storagemanager.writeBlock(0, NewFile,block);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}	
 	}
 
 	@Override
