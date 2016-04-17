@@ -37,7 +37,7 @@ public class RecordManager implements IRecordManager{
 			int bytes = (int) Math.ceil(mt.slotsPerBlock/8.0);
 			
 			for(int j = 0; j < tmpBytes.length; j += bytes)
-				mt.blocks.set(j, BitSet.valueOf(Arrays.copyOfRange(tmpBytes, j, bytes)));
+				mt.bitArray.set(j, BitSet.valueOf(Arrays.copyOfRange(tmpBytes, j, bytes)));
 			
 			mt.dbFile = dbf;
 			
@@ -66,7 +66,7 @@ public class RecordManager implements IRecordManager{
 			for(int i = 0 ; i < mt.columnNames.length ; i++)
 				metaInfo += String.format("%s$%s$%s$%s/", mt.columnNames[i], mt.dataTypes[i], mt.isKey[i], mt.references[i]);
 			
-			for(BitSet b : mt.blocks)
+			for(BitSet b : mt.bitArray)
 				metaInfo += new String(b.toByteArray());
 			
 			metaBlock.setData(metaInfo.getBytes());
@@ -155,7 +155,7 @@ class MetaData{
 	public boolean[] isKey;
 	public String[] references;
 	
-	public ArrayList<BitSet> blocks;
+	public ArrayList<BitSet> bitArray;
 	
 	public int slotSize;
 	public int slotsPerBlock;
@@ -205,6 +205,43 @@ class MetaData{
 	public void addEmptyBlock(){
 		BitSet b = new BitSet(slotsPerBlock);
 		b.set(0, b.size());
-		blocks.add(b);
+		bitArray.add(b);
+	}
+	
+	public void fillSlot(RecordID ri)
+	{
+		bitArray.get(ri.getBlockNumber()).clear(ri.getSlotNumber());
+	}
+	
+	public RecordID getFreeSlot(){
+		
+		RecordID ri = new RecordID();
+		boolean found = false;
+		
+		for(int i = 0; i < bitArray.size(); i++)
+		{
+			int slot = bitArray.get(i).nextSetBit(0);
+			if(slot > -1)
+			{
+				found = true;
+				ri.setBlockNumber(i+1);
+				ri.setSlotNumber(slot);
+				break;
+			}
+		}
+		
+		if(!found){
+			StorageManager sm = new StorageManager();
+			try {
+				sm.appendEmptyBlock(dbFile);
+				addEmptyBlock();
+				ri.setBlockNumber(bitArray.size());
+				ri.setSlotNumber(0);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		return ri;
 	}
 }
