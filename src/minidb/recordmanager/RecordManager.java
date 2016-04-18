@@ -12,6 +12,39 @@ import minidb.storagemanager.StorageManager;
 
 public class RecordManager implements IRecordManager{
 
+//	public static void main(String[] args) throws Exception
+//	{
+//		RecordManager rm = new RecordManager();
+//		
+//		String[] columnNames = {"id", "name", "age"};
+//		String[] dataTypes = {"java.lang.Integer", "java.lang.String", "java.lang.Integer"};
+//		boolean[] isKey = {true, false, false};
+//		String[] references = {"Null", "Null", "Null"};
+//		rm.createTable("Student", columnNames, dataTypes, isKey, references);
+
+//		String[] georgeValues = {"1", "george", "20"};
+//		String[] hebaValues = {"2", "heba", "20"};
+//		String[] mahmoudValues = {"3", "mahmoud", "20"};
+//		
+//		Record r = new Record( columnNames, dataTypes, georgeValues, references, null);
+//		rm.insertRecord(r, "Student");
+//		r = new Record( columnNames, dataTypes, hebaValues, references, null);
+//		rm.insertRecord(r, "Student");
+//		r = new Record( columnNames, dataTypes, mahmoudValues, references, null);
+//		rm.insertRecord(r, "Student");
+//		
+//		Record[] results = (Record[]) rm.getRecord("Student", "age", "java.lang.Integer", "20");
+//		
+//		for(Record rec : results)
+//		{
+//			System.out.printf("<%s: %s, %s: %s, %s: %s>",
+//					rec.getColumnNames()[0],rec.getValues()[0],
+//					rec.getColumnNames()[1],rec.getValues()[1],
+//					rec.getColumnNames()[2],rec.getValues()[2]);
+//		}
+//		
+//	}
+	
 	private MetaData openTable(String tableName){
 		StorageManager sm = new StorageManager();
 		DBFile dbf;
@@ -100,10 +133,8 @@ public class RecordManager implements IRecordManager{
 			DBFile NewFile = (DBFile)storagemanager.createFile(tableName);
 		 
 			Block block = new Block(NewFile.getBlockSize());
-			storagemanager.writeBlock(0, NewFile,block);
 			
 			String metaInfo = "";
-			
 			for (int i =0;i<columnNames.length;i++){
 				metaInfo += String.format("%s$%s$%s$%s/", columnNames[i], dataTypes[i], isKey[i], references[i]);
 			}	
@@ -174,13 +205,11 @@ public class RecordManager implements IRecordManager{
 							}
 						}
 					}
-					
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
 			}
-		}
-		
+		}	
 		return (AbstractRecord[]) recs.toArray();
 	}
 
@@ -193,8 +222,6 @@ public class RecordManager implements IRecordManager{
 	}
 
 		
-	
-
 	@Override
 	public void updateRecord(AbstractRecord r, String tableName) throws AbstractRecordManagerException {
 		 MetaData mt = openTable(tableName);	

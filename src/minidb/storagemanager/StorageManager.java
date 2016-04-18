@@ -68,7 +68,6 @@ public class StorageManager implements IStorageManager{
 		file.read(aByte, 0, headerSize);
 		
 		String[] headerValues = (new String(aByte)).split(",");
-
 		DBFile fileHandler = new DBFile(fileName, Integer.parseInt(headerValues[0]), Integer.parseInt(headerValues[1].split("\u0000")[0]));
 		fileHandler.setOnDiskFile(file);
 		
@@ -85,6 +84,7 @@ public class StorageManager implements IStorageManager{
 	        Block headerBlk = new Block(headerSize);
 	        headerBlk.setData(header);
 
+	        fh.getOnDiskFile().seek(0);
 			fh.getOnDiskFile().write(headerBlk.getData(), 0, headerSize);
 			fh.getOnDiskFile().close();
 			
