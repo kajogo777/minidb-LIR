@@ -20,7 +20,7 @@ public class RecordManager implements IRecordManager{
 			Block metaBlock = (Block) sm.readFirstBlock(dbf);
 			String[] metaInfo = (new String(metaBlock.getData())).split("/");
 			MetaData mt = new MetaData(metaInfo.length-1);
-			Character c = new Character((char) metaBlock.getData()[0]);
+			Character c = new Character((char) metaBlock.getData()[0]); // msh most5dama
 			for(int i = 0; i < metaInfo.length-1; i++)
 			{
 				String[] col = metaInfo[i].split("$");
@@ -125,7 +125,13 @@ public class RecordManager implements IRecordManager{
 	@Override
 	public AbstractRecord[] getRecord(String tableName, String columnName, String dataType, String value) {
 		MetaData mt = openTable(tableName);
+		 StorageManager sm = new StorageManager();
+		 mt.dbFile.
 		
+		for (int i=0 ; i< mt.bitArray.size(); i++ ){
+			
+			
+		}
 		
 		return null;
 	}
