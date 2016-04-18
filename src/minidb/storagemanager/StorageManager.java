@@ -50,6 +50,7 @@ public class StorageManager implements IStorageManager{
         
         Block emptyBlk = new Block(blockSize);
 
+        fileHandler.getOnDiskFile().seek(0);
         fileHandler.getOnDiskFile().write(headerBlk.getData(), 0, headerSize);
         fileHandler.changeOnDiskPointer(0);
         fileHandler.getOnDiskFile().write(emptyBlk.getData(), 0, blockSize);

@@ -21,7 +21,7 @@ public class RecordManager implements IRecordManager{
 //		boolean[] isKey = {true, false, false};
 //		String[] references = {"Null", "Null", "Null"};
 //		rm.createTable("Student", columnNames, dataTypes, isKey, references);
-
+//
 //		String[] georgeValues = {"1", "george", "20"};
 //		String[] hebaValues = {"2", "heba", "20"};
 //		String[] mahmoudValues = {"3", "mahmoud", "20"};
