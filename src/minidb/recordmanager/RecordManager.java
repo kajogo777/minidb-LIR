@@ -312,6 +312,11 @@ class MetaData{
 		bitArray.get(ri.getBlockNumber()).set(ri.getSlotNumber());
 	}
 	
+	public boolean isFree(RecordID ri)
+	{
+		return bitArray.get(ri.getBlockNumber()).get(ri.getSlotNumber());
+	}
+	
 	public RecordID getFreeSlot(){
 		
 		RecordID ri = new RecordID();
