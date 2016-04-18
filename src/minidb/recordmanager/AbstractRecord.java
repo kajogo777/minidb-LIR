@@ -2,12 +2,11 @@ package minidb.recordmanager;
 
 public abstract class AbstractRecord {
 	
-	private String[] columnNames;
-	private String[] dataTypes;
-	private String[] values;
-	private String[] references;
-	
-	private RecordID key;
+	protected String[] columnNames;
+	protected String[] dataTypes;
+	protected String[] values;
+	protected String[] references;
+	protected RecordID key;
 	
 	public AbstractRecord(String[] columnNames, String[] dataTypes, String[] values, String[] references, RecordID key){
 		

@@ -1,6 +1,7 @@
 package minidb.recordmanager;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -55,7 +56,7 @@ public class RecordManager implements IRecordManager{
 		}	
 	}
 	
-	private void closeTable(String tableName, MetaData mt)
+	private void saveTableMetaData(String tableName, MetaData mt)
 	{
 		StorageManager sm = new StorageManager();
 		try {
@@ -105,8 +106,13 @@ public class RecordManager implements IRecordManager{
 
 	@Override
 	public void dropTable(String tableName) throws AbstractRecordManagerException {
-		// TODO Auto-generated method stub
-		
+		StorageManager sm = new StorageManager();
+		try {
+			sm.deleteFile(tableName);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	@Override
@@ -118,27 +124,76 @@ public class RecordManager implements IRecordManager{
 
 	@Override
 	public AbstractRecord[] getRecord(String tableName, String columnName, String dataType, String value) {
-		// TODO Auto-generated method stub
+		MetaData mt = openTable(tableName);
+		
 		
 		return null;
 	}
 
 	@Override
 	public void deleteRecord(AbstractRecord r, String tableName) throws AbstractRecordManagerException {
-		// TODO Auto-generated method stub
-		
+		MetaData mt = openTable(tableName);	
+	    RecordID index = ((Record)r).getKey();			
+		mt.clearSlot(index);
+		saveTableMetaData(tableName, mt);
 	}
+
+		
+	
 
 	@Override
 	public void updateRecord(AbstractRecord r, String tableName) throws AbstractRecordManagerException {
-		// TODO Auto-generated method stub
-		
+		 MetaData mt = openTable(tableName);	
+	       RecordID index = ((Record)r).getKey() ;
+	       StorageManager sm = new StorageManager();
+	       try {
+				Block b = (Block) sm.readBlock( index.getBlockNumber(), mt.dbFile);
+				byte[] array = b.getData();
+				int slotlocation = mt.slotSize * index.getSlotNumber();
+				
+				String[] types = r.getDataTypes();
+				String[] values = r.getValues();
+				for(int i = 0, bi = slotlocation; i < types.length; i++)
+				{
+					byte[] tmp = mt.getType(types[i], values[i]);
+					for(int j = 0; j < tmp.length; j++, bi++)
+						array[bi] = tmp[j];
+				}
+				
+				b.setData(array);
+				sm.writeBlock(index.getBlockNumber(), mt.dbFile, b);
+				
+	       } catch (IOException e) {
+				e.printStackTrace();
+			} 
 	}
 
 	@Override
 	public void insertRecord(AbstractRecord r, String tableName) throws AbstractRecordManagerException {
-		// TODO Auto-generated method stub
-		
+       MetaData mt = openTable(tableName);	
+       RecordID index = mt.getFreeSlot();
+       StorageManager sm = new StorageManager();
+       try {
+			Block b = (Block) sm.readBlock( index.getBlockNumber(), mt.dbFile);
+			byte[] array = b.getData();
+			int slotlocation = mt.slotSize * index.getSlotNumber();
+			
+			String[] types = r.getDataTypes();
+			String[] values = r.getValues();
+			for(int i = 0, bi = slotlocation; i < types.length; i++)
+			{
+				byte[] tmp = mt.getType(types[i], values[i]);
+				for(int j = 0; j < tmp.length; j++, bi++)
+					array[bi] = tmp[j];
+			}
+			
+			b.setData(array);
+			sm.writeBlock(index.getBlockNumber(), mt.dbFile, b);
+			mt.fillSlot(index);
+			saveTableMetaData(tableName, mt);
+		} catch (IOException e) {
+			e.printStackTrace();
+		} 
 	}
 
 	@Override
@@ -169,7 +224,40 @@ class MetaData{
 		references = new String[colN];
 	}
 	
-	private int getType(String type){
+	public byte[] getType(String type, String value)
+	{
+		ByteBuffer bf;
+		switch(type){
+			case "java.lang.Integer":
+				bf = ByteBuffer.allocate(4);
+				bf.putInt(Integer.parseInt(value));	
+				break;
+			case "java.lang.Boolean":
+				bf = ByteBuffer.allocate(1);
+				byte[] b = new byte[1];
+				b[0] = (byte) (value.compareToIgnoreCase("true") == 0 ? 1 : 0);
+				bf.put(b, 0, 1);
+				break;
+			case "java.util.Date":
+				bf = ByteBuffer.allocate(8);
+				bf.putLong(Long.parseLong(value));
+				break;
+			case "java.lang.String":
+				bf = ByteBuffer.allocate(100);
+				bf.put(value.getBytes());
+				break;
+			default:
+				//"java.lang.String:100"
+				int size = Integer.parseInt(type.split(":")[1]);
+				bf = ByteBuffer.allocate(size);
+				bf.put(value.getBytes());
+				break;
+		}
+		return bf.array();
+	}
+	
+	
+	private int getTypeSize(String type){
 		int size = 0;
 		switch(type){
 			case "java.lang.Integer":
@@ -194,7 +282,7 @@ class MetaData{
 	
 	public void setSlotSize(){
 		for(int i = 0; i < dataTypes.length; i++){
-			slotSize += getType(dataTypes[i]);
+			slotSize += getTypeSize(dataTypes[i]);
 		}
 	}
 	
@@ -211,6 +299,11 @@ class MetaData{
 	public void fillSlot(RecordID ri)
 	{
 		bitArray.get(ri.getBlockNumber()).clear(ri.getSlotNumber());
+	}
+	
+	public void clearSlot(RecordID ri)
+	{
+		bitArray.get(ri.getBlockNumber()).set(ri.getSlotNumber());
 	}
 	
 	public RecordID getFreeSlot(){

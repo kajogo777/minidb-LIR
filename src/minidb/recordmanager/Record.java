@@ -9,32 +9,27 @@ public class Record extends AbstractRecord{
 
 	@Override
 	public String[] getColumnNames() {
-		// TODO Auto-generated method stub
-		return null;
+		return columnNames;
 	}
 
 	@Override
 	public String[] getDataTypes() {
-		// TODO Auto-generated method stub
-		return null;
+		return dataTypes;
 	}
 
 	@Override
 	public String[] getValues() {
-		// TODO Auto-generated method stub
-		return null;
+		return values;
 	}
 
 	@Override
 	public String[] getReferences() {
-		// TODO Auto-generated method stub
-		return null;
+		return references;
 	}
 
 	@Override
 	public RecordID getKey() {
-		// TODO Auto-generated method stub
-		return null;
+		return key;
 	}
 
 	@Override
