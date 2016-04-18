@@ -55,7 +55,11 @@ public class RecordManager implements IRecordManager{
 			MetaData mt = new MetaData(metaInfo.length-1);
 			for(int i = 0; i < metaInfo.length-1; i++)
 			{
-				String[] col = metaInfo[i].split("$");
+				String[] col = metaInfo[i].split(",");
+				
+				for(String s : col)
+					System.out.println(s);
+				
 				mt.columnNames[i] = col[0];
 				mt.dataTypes[i] = col[1];
 				mt.isKey[i] = Boolean.valueOf(col[2]);
@@ -96,7 +100,7 @@ public class RecordManager implements IRecordManager{
 			String metaInfo = "";
 			
 			for(int i = 0 ; i < mt.columnNames.length ; i++)
-				metaInfo += String.format("%s$%s$%s$%s/", mt.columnNames[i], mt.dataTypes[i], mt.isKey[i], mt.references[i]);
+				metaInfo += String.format("%s,%s,%s,%s/", mt.columnNames[i], mt.dataTypes[i], mt.isKey[i], mt.references[i]);
 			
 			for(BitSet b : mt.bitArray)
 				metaInfo += new String(b.toByteArray());
@@ -136,7 +140,7 @@ public class RecordManager implements IRecordManager{
 			
 			String metaInfo = "";
 			for (int i =0;i<columnNames.length;i++){
-				metaInfo += String.format("%s$%s$%s$%s/", columnNames[i], dataTypes[i], isKey[i], references[i]);
+				metaInfo += String.format("%s,%s,%s,%s/", columnNames[i], dataTypes[i], isKey[i], references[i]);
 			}	
 			
 			block.setData(metaInfo.getBytes());
