@@ -20,7 +20,6 @@ public class RecordManager implements IRecordManager{
 			Block metaBlock = (Block) sm.readFirstBlock(dbf);
 			String[] metaInfo = (new String(metaBlock.getData())).split("/");
 			MetaData mt = new MetaData(metaInfo.length-1);
-			Character c = new Character((char) metaBlock.getData()[0]); // msh most5dama
 			for(int i = 0; i < metaInfo.length-1; i++)
 			{
 				String[] col = metaInfo[i].split("$");
@@ -50,7 +49,6 @@ public class RecordManager implements IRecordManager{
 			
 			return mt;
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			return null;
 		}	
@@ -73,15 +71,29 @@ public class RecordManager implements IRecordManager{
 			metaBlock.setData(metaInfo.getBytes());
 			sm.writeBlock(0, mt.dbFile, metaBlock);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+	
+	public String[] valuesToString(byte[] slot, MetaData mt)
+	{
+		String[] values = new String[mt.columnNames.length];
+		
+		for(int i = 0; i < mt.columnNames.length; i++)
+		{
+			byte[] cell = new byte[mt.getTypeSize(mt.dataTypes[i])];
+			
+			for(int b = 0; b < mt.getTypeSize(mt.dataTypes[i]); b++)
+				cell[b] = slot[ b + mt.getColOffset(mt.columnNames[i]) ];
+			
+			values[i] = new String(cell);
+		}
+		return values;
 	}
 	
 	@Override
 	public void createTable(String tableName, String[] columnNames, String[] dataTypes, boolean[] isKey,
 			String[] references) throws AbstractRecordManagerException {
-		// TODO Auto-generated method stub
 		
 		StorageManager storagemanager = new StorageManager();
 		try {
@@ -99,7 +111,6 @@ public class RecordManager implements IRecordManager{
 			block.setData(metaInfo.getBytes());
 			storagemanager.writeBlock(0, NewFile,block);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}	
 	}
@@ -110,7 +121,6 @@ public class RecordManager implements IRecordManager{
 		try {
 			sm.deleteFile(tableName);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -124,16 +134,54 @@ public class RecordManager implements IRecordManager{
 
 	@Override
 	public AbstractRecord[] getRecord(String tableName, String columnName, String dataType, String value) {
-//		MetaData mt = openTable(tableName);
-//		 StorageManager sm = new StorageManager();
-//		 mt.dbFile.
-//		
-//		for (int i=0 ; i< mt.bitArray.size(); i++ ){
-//			
-//			
-//		}
+		MetaData mt = openTable(tableName);
+		StorageManager sm = new StorageManager();
 		
-		return null;
+		ArrayList<Record> recs = new ArrayList<Record>();
+		
+		byte[] valueInBytes = mt.getType(dataType, value);
+		int offset = mt.getColOffset(columnName);
+		
+		for(int i = 1; i < (mt.dbFile.getFileSize()/mt.dbFile.getBlockSize()); i++)
+		{
+			if(!mt.isBlockFree(i))
+			{
+				try {
+					Block b = (Block) sm.readBlock(i, mt.dbFile);
+					byte[] block = b.getData();
+					
+					for(int slot = 0; slot < mt.slotsPerBlock ; slot++)
+					{
+						RecordID ri = new RecordID();
+						ri.setBlockNumber(i);
+						ri.setSlotNumber(slot);
+						if(!mt.isFree(ri)){
+							boolean match = true;
+							for(int j = 0; j < valueInBytes.length; j++)
+							{
+								int index = (slot*mt.slotSize) + offset + j;
+								if(block[index] != valueInBytes[j])
+								{
+									match = false;
+									break;
+								}
+							}
+							if(match)
+							{
+								String[] values = valuesToString(Arrays.copyOfRange(block, (slot*mt.slotSize), mt.slotSize), mt);
+								Record r = new Record(mt.columnNames,mt.dataTypes, values,mt.references,ri);
+								recs.add(r);
+							}
+						}
+					}
+					
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		
+		return (AbstractRecord[]) recs.toArray();
 	}
 
 	@Override
@@ -230,6 +278,20 @@ class MetaData{
 		references = new String[colN];
 	}
 	
+	public int getColOffset(String colName)
+	{
+		int result = 0;
+		for(int i = 0; i < columnNames.length; i++)
+		{
+			if(columnNames[i].equalsIgnoreCase(colName))
+				result++;
+			else{
+				result += getTypeSize(dataTypes[i]);
+			}
+		}
+		return result;
+	}
+	
 	public byte[] getType(String type, String value)
 	{
 		ByteBuffer bf;
@@ -263,7 +325,7 @@ class MetaData{
 	}
 	
 	
-	private int getTypeSize(String type){
+	public int getTypeSize(String type){
 		int size = 0;
 		switch(type){
 			case "java.lang.Integer":
@@ -300,6 +362,11 @@ class MetaData{
 		BitSet b = new BitSet(slotsPerBlock);
 		b.set(0, b.size());
 		bitArray.add(b);
+	}
+	
+	public boolean isBlockFree(int b)
+	{
+		return bitArray.get(b).cardinality() == bitArray.get(b).size();
 	}
 	
 	public void fillSlot(RecordID ri)
@@ -342,7 +409,6 @@ class MetaData{
 				ri.setBlockNumber(bitArray.size());
 				ri.setSlotNumber(0);
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
