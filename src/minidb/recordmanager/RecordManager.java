@@ -124,14 +124,14 @@ public class RecordManager implements IRecordManager{
 
 	@Override
 	public AbstractRecord[] getRecord(String tableName, String columnName, String dataType, String value) {
-		MetaData mt = openTable(tableName);
-		 StorageManager sm = new StorageManager();
-		 mt.dbFile.
-		
-		for (int i=0 ; i< mt.bitArray.size(); i++ ){
-			
-			
-		}
+//		MetaData mt = openTable(tableName);
+//		 StorageManager sm = new StorageManager();
+//		 mt.dbFile.
+//		
+//		for (int i=0 ; i< mt.bitArray.size(); i++ ){
+//			
+//			
+//		}
 		
 		return null;
 	}
