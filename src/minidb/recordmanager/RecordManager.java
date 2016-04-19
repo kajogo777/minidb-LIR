@@ -1,16 +1,11 @@
 package minidb.recordmanager;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
+
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.Collection;
-import java.util.List;
 
 import minidb.storagemanager.Block;
 import minidb.storagemanager.DBFile;
@@ -30,9 +25,9 @@ public class RecordManager implements IRecordManager{
 
 		String[] mahmoudValues = {"3", "mahmoud", "20"};
 		
-		for(int i = 1; i <= 4227; i++)
+		for(int i = 1; i <= 3000; i++)
 		{
-			mahmoudValues[0] = ""+i;
+			mahmoudValues[0] = "" + i;
 			mahmoudValues[2] = "" + i%21;
 			Record r = new Record( columnNames, dataTypes, mahmoudValues, references, null);
 			rm.insertRecord(r, "Student");
@@ -48,7 +43,6 @@ public class RecordManager implements IRecordManager{
 					
 		}
 	}
-	
 
 	private MetaData openTable(String tableName){
 		StorageManager sm = new StorageManager();
@@ -87,7 +81,7 @@ public class RecordManager implements IRecordManager{
 				
 				for(int j = 0; j < mt.dbFile.getTotalNumberOfBlocks()-1; j++)
 				{
-					BitSet tmp = toBitArray(Arrays.copyOfRange(bitMap, j*bytesPerBitMap, j*bytesPerBitMap+bytesPerBitMap));
+					BitSet tmp = MetaData.toBitArray(Arrays.copyOfRange(bitMap, j*bytesPerBitMap, j*bytesPerBitMap+bytesPerBitMap));
 					mt.bitArray.add(0, tmp);
 				}
 			}
@@ -99,96 +93,6 @@ public class RecordManager implements IRecordManager{
 		}	
 	}
 	
-	public static byte[] toByteArray(BitSet bits, int size) {
-		byte[] bytes = new byte[(size+7)/8];
-	    for(int i = 0; i < size; i++)
-	    {
-	    	if(bits.get(i))
-	    		bytes[i/8] |= 1<<(i%8);
-	    }
-	    return bytes;
-	}
-	public static BitSet toBitArray(byte[] bytes) {
-		BitSet set = new BitSet(bytes.length*8);
-		for (int i = 0; i < bytes.length; i++) {
-			byte b = bytes[i];
-	        int n = 7;
-	        while(n >= 0)
-	        {
-	        	boolean isSet = (b & 0x80) != 0;
-	        	set.set(i*8 + n, isSet);
-	        	b <<=1;
-	            n--;
-	        }
-	    }	
-		return set;
-	}
-	
-	private void saveTableMetaData(String tableName, MetaData mt)
-	{
-		StorageManager sm = new StorageManager();
-		try {
-			Block metaBlock = new Block();
-			
-			String metaInfo = "";
-			
-			for(int i = 0 ; i < mt.columnNames.length ; i++)
-				metaInfo += String.format("%s,%s,%s,%s/", mt.columnNames[i], mt.dataTypes[i], mt.isKey[i], mt.references[i]);
-			
-			byte[] header = metaInfo.getBytes();
-			byte[] buffer = new byte[header.length + mt.dbFile.getTotalNumberOfBlocks() * ((mt.slotsPerBlock+7)/8)];//((mt.slotsPerBlock+31)/32)*4];
-			
-			for(int i = 0; i < header.length; i++)
-					buffer[i] = header[i];
-			
-			for(int j = 0, index = header.length; j < mt.bitArray.size(); j++)
-			{
-				byte[] tmp = toByteArray(mt.bitArray.get(j), mt.bitArray.get(j).length());
-				for(int i = 0; i < tmp.length; i++)
-					buffer[index++] = tmp[i];		
-			}
-			
-			metaBlock.setData(buffer);
-			sm.writeBlock(0, mt.dbFile, metaBlock);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	public String[] valuesToString(byte[] slot, MetaData mt)
-	{
-		String[] values = new String[mt.columnNames.length];
-		
-		for(int i = 0; i < mt.columnNames.length; i++)
-		{
-			byte[] cell = new byte[mt.getTypeSize(mt.dataTypes[i])];
-			
-			for(int b = 0; b < mt.getTypeSize(mt.dataTypes[i]); b++)
-				cell[b] = slot[ b + mt.getColOffset(mt.columnNames[i]) ];
-			
-			ByteBuffer wrapped = ByteBuffer.wrap(cell);
-			values[i] = "";
-			
-			switch(mt.dataTypes[i]){
-			case "java.lang.Integer":
-				values[i] += wrapped.getInt();
-				break;
-			case "java.lang.Boolean":
-				values[i] += (cell[0] == 1? "True": "False");	
-				break;
-			case "java.util.Date":
-				values[i] += wrapped.getLong();
-				break;
-			case "java.lang.String":
-				values[i] += new String(cell);
-				break;
-			default:
-				values[i] += new String(cell);
-				break;
-			}
-		}
-		return values;
-	}
 	
 	@Override
 	public void createTable(String tableName, String[] columnNames, String[] dataTypes, boolean[] isKey,
@@ -236,7 +140,7 @@ public class RecordManager implements IRecordManager{
 		
 		ArrayList<Record> recs = new ArrayList<Record>();
 		
-		byte[] valueInBytes = mt.getType(dataType, value);
+		byte[] valueInBytes = MetaData.getType(dataType, value);
 		int offset = mt.getColOffset(columnName);
 		
 		for(int i = 1; i < mt.dbFile.getTotalNumberOfBlocks(); i++)
@@ -262,11 +166,9 @@ public class RecordManager implements IRecordManager{
 									match = false;
 									break;
 								}
-
-
 							if(match)
 							{
-								String[] values = valuesToString(Arrays.copyOfRange(block, (slot*mt.slotSize), (slot*mt.slotSize)+mt.slotSize), mt);
+								String[] values = mt.valuesToString(Arrays.copyOfRange(block, (slot*mt.slotSize), (slot*mt.slotSize)+mt.slotSize));
 								Record r = new Record(mt.columnNames,mt.dataTypes, values,mt.references,ri);
 								recs.add(r);
 							}
@@ -276,11 +178,10 @@ public class RecordManager implements IRecordManager{
 					e.printStackTrace();
 				}
 			}
-		}
-		
+		}	
 		AbstractRecord[] result = new AbstractRecord[recs.size()];
 		for(int i = 0; i < recs.size(); i++)
-			result[i] = recs.get(i);
+			result[i] = recs.get(i);	
 		
 		return result;
 	}
@@ -290,7 +191,7 @@ public class RecordManager implements IRecordManager{
 		MetaData mt = openTable(tableName);	
 	    RecordID index = ((Record)r).getKey();			
 		mt.clearSlot(index);
-		saveTableMetaData(tableName, mt);
+		mt.saveTableMetaData();
 	}
 
 		
@@ -308,7 +209,7 @@ public class RecordManager implements IRecordManager{
 				String[] values = r.getValues();
 				for(int i = 0, bi = slotlocation; i < types.length; i++)
 				{
-					byte[] tmp = mt.getType(types[i], values[i]);
+					byte[] tmp = MetaData.getType(types[i], values[i]);
 					for(int j = 0; j < tmp.length; j++, bi++)
 						array[bi] = tmp[j];
 				}
@@ -336,7 +237,7 @@ public class RecordManager implements IRecordManager{
 			int bi = slotlocation;
 			for(int i = 0; i < types.length; i++)
 			{
-				byte[] tmp = mt.getType(types[i], values[i]);
+				byte[] tmp = MetaData.getType(types[i], values[i]);
 				for(int j = 0; j < tmp.length; j++, bi++)
 					array[bi] = tmp[j];
 			}
@@ -344,7 +245,7 @@ public class RecordManager implements IRecordManager{
 			b.setData(array);
 			sm.writeBlock(index.getBlockNumber()+1, mt.dbFile, b);
 			mt.fillSlot(index);
-			saveTableMetaData(tableName, mt);
+			mt.saveTableMetaData();
 		} catch (IOException e) {
 			e.printStackTrace();
 		} 
@@ -380,21 +281,34 @@ class MetaData{
 		bitArray = new ArrayList<BitSet>();
 	}
 	
-	public int getColOffset(String colName)
-	{
-		int result = 0;
-		for(int i = 0; i < columnNames.length; i++)
-		{
-			if(columnNames[i].equalsIgnoreCase(colName))
-				break;
-			else{
-				result += getTypeSize(dataTypes[i]);
-			}
-		}
-		return result;
+	public static byte[] toByteArray(BitSet bits, int size) {
+		byte[] bytes = new byte[(size+7)/8];
+	    for(int i = 0; i < size; i++)
+	    {
+	    	if(bits.get(i))
+	    		bytes[i/8] |= 1<<(i%8);
+	    }
+	    return bytes;
 	}
 	
-	public byte[] getType(String type, String value)
+	public static BitSet toBitArray(byte[] bytes) {
+		BitSet set = new BitSet(bytes.length*8);
+		for (int i = 0; i < bytes.length; i++) {
+			byte b = bytes[i];
+	        int n = 7;
+	        while(n >= 0)
+	        {
+	        	boolean isSet = (b & 0x80) != 0;
+	        	set.set(i*8 + n, isSet);
+	        	b <<=1;
+	            n--;
+	        }
+	    }	
+		return set;
+	}
+	
+	
+	public static byte[] getType(String type, String value)
 	{
 		ByteBuffer bf;
 		switch(type){
@@ -426,8 +340,7 @@ class MetaData{
 		return bf.array();
 	}
 	
-	
-	public int getTypeSize(String type){
+	public static int getTypeSize(String type){
 		int size = 0;
 		switch(type){
 			case "java.lang.Integer":
@@ -449,6 +362,23 @@ class MetaData{
 		}
 		return size;
 	}
+	
+	
+	
+	public int getColOffset(String colName)
+	{
+		int result = 0;
+		for(int i = 0; i < columnNames.length; i++)
+		{
+			if(columnNames[i].equalsIgnoreCase(colName))
+				break;
+			else{
+				result += getTypeSize(dataTypes[i]);
+			}
+		}
+		return result;
+	}
+	
 	
 	public void setSlotSize(){
 		for(int i = 0; i < dataTypes.length; i++){
@@ -515,4 +445,71 @@ class MetaData{
 		}
 		return ri;
 	}
+	
+	public String[] valuesToString(byte[] slot)
+	{
+		String[] values = new String[columnNames.length];
+		
+		for(int i = 0; i < columnNames.length; i++)
+		{
+			byte[] cell = new byte[MetaData.getTypeSize(dataTypes[i])];
+			
+			for(int b = 0; b < MetaData.getTypeSize(dataTypes[i]); b++)
+				cell[b] = slot[ b + getColOffset(columnNames[i]) ];
+			
+			ByteBuffer wrapped = ByteBuffer.wrap(cell);
+			values[i] = "";
+			
+			switch(dataTypes[i]){
+			case "java.lang.Integer":
+				values[i] += wrapped.getInt();
+				break;
+			case "java.lang.Boolean":
+				values[i] += (cell[0] == 1? "True": "False");	
+				break;
+			case "java.util.Date":
+				values[i] += wrapped.getLong();
+				break;
+			case "java.lang.String":
+				values[i] += new String(cell);
+				break;
+			default:
+				values[i] += new String(cell);
+				break;
+			}
+		}
+		return values;
+	}
+	
+	public void saveTableMetaData()
+	{
+		StorageManager sm = new StorageManager();
+		try {
+			Block metaBlock = new Block();
+			
+			String metaInfo = "";
+			
+			for(int i = 0 ; i < columnNames.length ; i++)
+				metaInfo += String.format("%s,%s,%s,%s/", columnNames[i], dataTypes[i], isKey[i], references[i]);
+			
+			byte[] header = metaInfo.getBytes();
+			byte[] buffer = new byte[header.length + dbFile.getTotalNumberOfBlocks() * ((slotsPerBlock+7)/8)];//((mt.slotsPerBlock+31)/32)*4];
+			
+			for(int i = 0; i < header.length; i++)
+					buffer[i] = header[i];
+			
+			for(int j = 0, index = header.length; j < bitArray.size(); j++)
+			{
+				byte[] tmp = MetaData.toByteArray(bitArray.get(j), bitArray.get(j).length());
+				for(int i = 0; i < tmp.length; i++)
+					buffer[index++] = tmp[i];		
+			}
+			
+			metaBlock.setData(buffer);
+			sm.writeBlock(0, dbFile, metaBlock);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
 }
