@@ -1,10 +1,16 @@
 package minidb.recordmanager;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Collection;
+import java.util.List;
 
 import minidb.storagemanager.Block;
 import minidb.storagemanager.DBFile;
@@ -12,39 +18,38 @@ import minidb.storagemanager.StorageManager;
 
 public class RecordManager implements IRecordManager{
 
-//	public static void main(String[] args) throws Exception
-//	{
-//		RecordManager rm = new RecordManager();
-//		
-//		String[] columnNames = {"id", "name", "age"};
-//		String[] dataTypes = {"java.lang.Integer", "java.lang.String", "java.lang.Integer"};
-//		boolean[] isKey = {true, false, false};
-//		String[] references = {"Null", "Null", "Null"};
-//		rm.createTable("Student", columnNames, dataTypes, isKey, references);
-//
-//		String[] georgeValues = {"1", "george", "20"};
-//		String[] hebaValues = {"2", "heba", "20"};
-//		String[] mahmoudValues = {"3", "mahmoud", "20"};
-//		
-//		Record r = new Record( columnNames, dataTypes, georgeValues, references, null);
-//		rm.insertRecord(r, "Student");
-//		r = new Record( columnNames, dataTypes, hebaValues, references, null);
-//		rm.insertRecord(r, "Student");
-//		r = new Record( columnNames, dataTypes, mahmoudValues, references, null);
-//		rm.insertRecord(r, "Student");
-//		
-//		Record[] results = (Record[]) rm.getRecord("Student", "age", "java.lang.Integer", "20");
-//		
-//		for(Record rec : results)
-//		{
-//			System.out.printf("<%s: %s, %s: %s, %s: %s>",
-//					rec.getColumnNames()[0],rec.getValues()[0],
-//					rec.getColumnNames()[1],rec.getValues()[1],
-//					rec.getColumnNames()[2],rec.getValues()[2]);
-//		}
-//		
-//	}
+	public static void main(String[] args) throws Exception
+	{
+		RecordManager rm = new RecordManager();
+		
+		String[] columnNames = {"id", "name", "age"};
+		String[] dataTypes = {"java.lang.Integer", "java.lang.String:10", "java.lang.Integer"};
+		boolean[] isKey = {true, false, false};
+		String[] references = {"Null", "Null", "Null"};
+		rm.createTable("Student", columnNames, dataTypes, isKey, references);
+
+		String[] mahmoudValues = {"3", "mahmoud", "20"};
+		
+		for(int i = 1; i <= 4227; i++)
+		{
+			mahmoudValues[0] = ""+i;
+			mahmoudValues[2] = "" + i%21;
+			Record r = new Record( columnNames, dataTypes, mahmoudValues, references, null);
+			rm.insertRecord(r, "Student");
+		}
+		
+		AbstractRecord[] results = rm.getRecord("Student", "age", "java.lang.Integer", "20");
+		for(AbstractRecord rec : results)
+		{
+			System.out.printf("< %s: %s, %s: %s, %s: %s >\n",
+					rec.getColumnNames()[0],rec.getValues()[0],
+					rec.getColumnNames()[2],rec.getValues()[2],
+					rec.getColumnNames()[1],rec.getValues()[1]);
+					
+		}
+	}
 	
+
 	private MetaData openTable(String tableName){
 		StorageManager sm = new StorageManager();
 		DBFile dbf;
@@ -53,12 +58,12 @@ public class RecordManager implements IRecordManager{
 			Block metaBlock = (Block) sm.readFirstBlock(dbf);
 			String[] metaInfo = (new String(metaBlock.getData())).split("/");
 			MetaData mt = new MetaData(metaInfo.length-1);
+			int bitMapOffset = metaInfo.length -1;
 			for(int i = 0; i < metaInfo.length-1; i++)
 			{
-				String[] col = metaInfo[i].split(",");
+				bitMapOffset += metaInfo[i].length();
 				
-				for(String s : col)
-					System.out.println(s);
+				String[] col = metaInfo[i].split(",");
 				
 				mt.columnNames[i] = col[0];
 				mt.dataTypes[i] = col[1];
@@ -69,19 +74,22 @@ public class RecordManager implements IRecordManager{
 			mt.setSlotSize();
 			mt.setSlotsPerBlock(dbf.getBlockSize());
 			
-			byte[] tmpBytes = metaInfo[metaInfo.length-1].getBytes();
-			
-			int bytes = (int) Math.ceil(mt.slotsPerBlock/8.0);
-			
-			for(int j = 0; j < tmpBytes.length; j += bytes)
-				mt.bitArray.set(j, BitSet.valueOf(Arrays.copyOfRange(tmpBytes, j, bytes)));
-			
 			mt.dbFile = dbf;
 			
-			if(mt.dbFile.getFileSize()/mt.dbFile.getBlockSize() == 1)
+			int bytesPerBitMap = ((mt.slotsPerBlock + 7) / 8);
+
+			if(mt.dbFile.getTotalNumberOfBlocks() == 1)
 			{
 				sm.appendEmptyBlock(mt.dbFile);
 				mt.addEmptyBlock();
+			}else{
+				byte[] bitMap = Arrays.copyOfRange(metaBlock.getData(), bitMapOffset, bitMapOffset+mt.dbFile.getTotalNumberOfBlocks() * ((mt.slotsPerBlock + 7) / 8));// ((mt.slotsPerBlock+31)/32)*4);
+				
+				for(int j = 0; j < mt.dbFile.getTotalNumberOfBlocks()-1; j++)
+				{
+					BitSet tmp = toBitArray(Arrays.copyOfRange(bitMap, j*bytesPerBitMap, j*bytesPerBitMap+bytesPerBitMap));
+					mt.bitArray.add(0, tmp);
+				}
 			}
 			
 			return mt;
@@ -89,6 +97,31 @@ public class RecordManager implements IRecordManager{
 			e.printStackTrace();
 			return null;
 		}	
+	}
+	
+	public static byte[] toByteArray(BitSet bits, int size) {
+		byte[] bytes = new byte[(size+7)/8];
+	    for(int i = 0; i < size; i++)
+	    {
+	    	if(bits.get(i))
+	    		bytes[i/8] |= 1<<(i%8);
+	    }
+	    return bytes;
+	}
+	public static BitSet toBitArray(byte[] bytes) {
+		BitSet set = new BitSet(bytes.length*8);
+		for (int i = 0; i < bytes.length; i++) {
+			byte b = bytes[i];
+	        int n = 7;
+	        while(n >= 0)
+	        {
+	        	boolean isSet = (b & 0x80) != 0;
+	        	set.set(i*8 + n, isSet);
+	        	b <<=1;
+	            n--;
+	        }
+	    }	
+		return set;
 	}
 	
 	private void saveTableMetaData(String tableName, MetaData mt)
@@ -102,10 +135,20 @@ public class RecordManager implements IRecordManager{
 			for(int i = 0 ; i < mt.columnNames.length ; i++)
 				metaInfo += String.format("%s,%s,%s,%s/", mt.columnNames[i], mt.dataTypes[i], mt.isKey[i], mt.references[i]);
 			
-			for(BitSet b : mt.bitArray)
-				metaInfo += new String(b.toByteArray());
+			byte[] header = metaInfo.getBytes();
+			byte[] buffer = new byte[header.length + mt.dbFile.getTotalNumberOfBlocks() * ((mt.slotsPerBlock+7)/8)];//((mt.slotsPerBlock+31)/32)*4];
 			
-			metaBlock.setData(metaInfo.getBytes());
+			for(int i = 0; i < header.length; i++)
+					buffer[i] = header[i];
+			
+			for(int j = 0, index = header.length; j < mt.bitArray.size(); j++)
+			{
+				byte[] tmp = toByteArray(mt.bitArray.get(j), mt.bitArray.get(j).length());
+				for(int i = 0; i < tmp.length; i++)
+					buffer[index++] = tmp[i];		
+			}
+			
+			metaBlock.setData(buffer);
 			sm.writeBlock(0, mt.dbFile, metaBlock);
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -123,7 +166,26 @@ public class RecordManager implements IRecordManager{
 			for(int b = 0; b < mt.getTypeSize(mt.dataTypes[i]); b++)
 				cell[b] = slot[ b + mt.getColOffset(mt.columnNames[i]) ];
 			
-			values[i] = new String(cell);
+			ByteBuffer wrapped = ByteBuffer.wrap(cell);
+			values[i] = "";
+			
+			switch(mt.dataTypes[i]){
+			case "java.lang.Integer":
+				values[i] += wrapped.getInt();
+				break;
+			case "java.lang.Boolean":
+				values[i] += (cell[0] == 1? "True": "False");	
+				break;
+			case "java.util.Date":
+				values[i] += wrapped.getLong();
+				break;
+			case "java.lang.String":
+				values[i] += new String(cell);
+				break;
+			default:
+				values[i] += new String(cell);
+				break;
+			}
 		}
 		return values;
 	}
@@ -177,9 +239,9 @@ public class RecordManager implements IRecordManager{
 		byte[] valueInBytes = mt.getType(dataType, value);
 		int offset = mt.getColOffset(columnName);
 		
-		for(int i = 1; i < (mt.dbFile.getFileSize()/mt.dbFile.getBlockSize()); i++)
+		for(int i = 1; i < mt.dbFile.getTotalNumberOfBlocks(); i++)
 		{
-			if(!mt.isBlockFree(i))
+			if(!mt.isBlockFree(i-1))
 			{
 				try {
 					Block b = (Block) sm.readBlock(i, mt.dbFile);
@@ -188,22 +250,23 @@ public class RecordManager implements IRecordManager{
 					for(int slot = 0; slot < mt.slotsPerBlock ; slot++)
 					{
 						RecordID ri = new RecordID();
-						ri.setBlockNumber(i);
+						ri.setBlockNumber(i-1);
 						ri.setSlotNumber(slot);
 						if(!mt.isFree(ri)){
 							boolean match = true;
+							int index = (slot*mt.slotSize)+offset;
+							//match = Arrays.equals( Arrays.copyOfRange(block, index, index+valueInBytes.length) ,valueInBytes);
 							for(int j = 0; j < valueInBytes.length; j++)
-							{
-								int index = (slot*mt.slotSize) + offset + j;
-								if(block[index] != valueInBytes[j])
+								if(block[index + j] != valueInBytes[j])
 								{
 									match = false;
 									break;
 								}
-							}
+
+
 							if(match)
 							{
-								String[] values = valuesToString(Arrays.copyOfRange(block, (slot*mt.slotSize), mt.slotSize), mt);
+								String[] values = valuesToString(Arrays.copyOfRange(block, (slot*mt.slotSize), (slot*mt.slotSize)+mt.slotSize), mt);
 								Record r = new Record(mt.columnNames,mt.dataTypes, values,mt.references,ri);
 								recs.add(r);
 							}
@@ -213,8 +276,13 @@ public class RecordManager implements IRecordManager{
 					e.printStackTrace();
 				}
 			}
-		}	
-		return (AbstractRecord[]) recs.toArray();
+		}
+		
+		AbstractRecord[] result = new AbstractRecord[recs.size()];
+		for(int i = 0; i < recs.size(); i++)
+			result[i] = recs.get(i);
+		
+		return result;
 	}
 
 	@Override
@@ -232,7 +300,7 @@ public class RecordManager implements IRecordManager{
 	       RecordID index = ((Record)r).getKey() ;
 	       StorageManager sm = new StorageManager();
 	       try {
-				Block b = (Block) sm.readBlock( index.getBlockNumber(), mt.dbFile);
+				Block b = (Block) sm.readBlock( index.getBlockNumber() +1, mt.dbFile);
 				byte[] array = b.getData();
 				int slotlocation = mt.slotSize * index.getSlotNumber();
 				
@@ -246,7 +314,7 @@ public class RecordManager implements IRecordManager{
 				}
 				
 				b.setData(array);
-				sm.writeBlock(index.getBlockNumber(), mt.dbFile, b);
+				sm.writeBlock(index.getBlockNumber() +1, mt.dbFile, b);
 				
 	       } catch (IOException e) {
 				e.printStackTrace();
@@ -259,26 +327,28 @@ public class RecordManager implements IRecordManager{
        RecordID index = mt.getFreeSlot();
        StorageManager sm = new StorageManager();
        try {
-			Block b = (Block) sm.readBlock( index.getBlockNumber(), mt.dbFile);
+			Block b = (Block) sm.readBlock( index.getBlockNumber() +1, mt.dbFile);
 			byte[] array = b.getData();
 			int slotlocation = mt.slotSize * index.getSlotNumber();
 			
 			String[] types = r.getDataTypes();
 			String[] values = r.getValues();
-			for(int i = 0, bi = slotlocation; i < types.length; i++)
+			int bi = slotlocation;
+			for(int i = 0; i < types.length; i++)
 			{
 				byte[] tmp = mt.getType(types[i], values[i]);
 				for(int j = 0; j < tmp.length; j++, bi++)
 					array[bi] = tmp[j];
 			}
-			
+
 			b.setData(array);
-			sm.writeBlock(index.getBlockNumber(), mt.dbFile, b);
+			sm.writeBlock(index.getBlockNumber()+1, mt.dbFile, b);
 			mt.fillSlot(index);
 			saveTableMetaData(tableName, mt);
 		} catch (IOException e) {
 			e.printStackTrace();
 		} 
+       
 	}
 
 	@Override
@@ -307,6 +377,7 @@ class MetaData{
 		dataTypes = new String[colN];
 		isKey = new boolean[colN];
 		references = new String[colN];
+		bitArray = new ArrayList<BitSet>();
 	}
 	
 	public int getColOffset(String colName)
@@ -315,7 +386,7 @@ class MetaData{
 		for(int i = 0; i < columnNames.length; i++)
 		{
 			if(columnNames[i].equalsIgnoreCase(colName))
-				result++;
+				break;
 			else{
 				result += getTypeSize(dataTypes[i]);
 			}
@@ -390,8 +461,8 @@ class MetaData{
 	}
 	
 	public void addEmptyBlock(){
-		BitSet b = new BitSet(slotsPerBlock);
-		b.set(0, b.size());
+		BitSet b = new BitSet(((slotsPerBlock+7)/8)*8);
+		b.set(0, b.size() - (b.size()-slotsPerBlock));
 		bitArray.add(b);
 	}
 	
@@ -426,18 +497,17 @@ class MetaData{
 			if(slot > -1)
 			{
 				found = true;
-				ri.setBlockNumber(i+1);
+				ri.setBlockNumber(i);
 				ri.setSlotNumber(slot);
 				break;
 			}
 		}
-		
 		if(!found){
 			StorageManager sm = new StorageManager();
 			try {
 				sm.appendEmptyBlock(dbFile);
 				addEmptyBlock();
-				ri.setBlockNumber(bitArray.size());
+				ri.setBlockNumber(bitArray.size()-1);
 				ri.setSlotNumber(0);
 			} catch (IOException e) {
 				e.printStackTrace();

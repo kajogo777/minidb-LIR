@@ -20,6 +20,11 @@ public class DBFile extends AbstractDBFile{
 		onDiskFile.seek(StorageManager.headerSize);
 	}
 	
+	public int getTotalNumberOfBlocks()
+	{
+		return totalNumOfBlocks;
+	}
+	
 	public RandomAccessFile getOnDiskFile() {
 		return onDiskFile;
 	}

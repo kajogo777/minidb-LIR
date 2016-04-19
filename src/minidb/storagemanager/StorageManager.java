@@ -80,16 +80,22 @@ public class StorageManager implements IStorageManager{
 	public void closeFile(AbstractDBFile f) throws IOException {
 			DBFile fh = (DBFile) f;
 		
-		    byte[] header = String.format("%d,%d",fh.totalNumOfBlocks,fh.getBlockSize()).getBytes();// num of blocks, blocksize
-	        
-	        Block headerBlk = new Block(headerSize);
-	        headerBlk.setData(header);
-
-	        fh.getOnDiskFile().seek(0);
-			fh.getOnDiskFile().write(headerBlk.getData(), 0, headerSize);
+		    updateFileHeader(fh);
 			fh.getOnDiskFile().close();
 			
 			myOpenDBFiles.remove(f);
+	}
+	
+	private void updateFileHeader(DBFile fh) throws IOException
+	{
+	    byte[] header = String.format("%d,%d",fh.totalNumOfBlocks,fh.getBlockSize()).getBytes();// num of blocks, blocksize
+
+        Block headerBlk = new Block(headerSize);
+        headerBlk.setData(header);
+
+        fh.getOnDiskFile().seek(0);
+		fh.getOnDiskFile().write(headerBlk.getData(), 0, headerSize);
+		fh.changeOnDiskPointer(fh.curBlockPos);
 	}
 
 	@Override
@@ -172,6 +178,7 @@ public class StorageManager implements IStorageManager{
 		fh.changeOnDiskPointer(blockNum);
 		fh.getOnDiskFile().write(blk.getData(), 0, fh.getBlockSize());
 		f.curBlockPos++;
+		updateFileHeader(fh);
 	}
 
 	@Override
@@ -186,6 +193,7 @@ public class StorageManager implements IStorageManager{
 		fh.totalNumOfBlocks = fh.totalNumOfBlocks +1;
 		
 		writeBlock(fh.totalNumOfBlocks -1, f, blk);
+		updateFileHeader(fh);
 	}
 	
 	
