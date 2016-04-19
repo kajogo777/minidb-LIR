@@ -17,31 +17,50 @@ public class RecordManager implements IRecordManager{
 	{
 		RecordManager rm = new RecordManager();
 		
+		//create
 		String[] columnNames = {"id", "name", "age"};
 		String[] dataTypes = {"java.lang.Integer", "java.lang.String:10", "java.lang.Integer"};
 		boolean[] isKey = {true, false, false};
 		String[] references = {"Null", "Null", "Null"};
 		rm.createTable("Student", columnNames, dataTypes, isKey, references);
-
-		String[] mahmoudValues = {"3", "mahmoud", "20"};
 		
-		for(int i = 1; i <= 3000; i++)
+		
+		//insert
+		String[] mahmoudValues = {"3", "mahmoud", "20"};
+		for(int i = 1; i <= 10; i++)
 		{
 			mahmoudValues[0] = "" + i;
-			mahmoudValues[2] = "" + i%21;
+			mahmoudValues[2] = "" + 20;
 			Record r = new Record( columnNames, dataTypes, mahmoudValues, references, null);
 			rm.insertRecord(r, "Student");
 		}
 		
+		//update
 		AbstractRecord[] results = rm.getRecord("Student", "age", "java.lang.Integer", "20");
+		Record temp = (Record) results[3];
+		temp.values[1] = "George";
+		rm.updateRecord(temp, "Student");
+		
+		//delete
+		temp = (Record) results[0];
+		rm.deleteRecord(temp, "Student");
+		
+		//insert
+		Record r = new Record( columnNames, dataTypes, mahmoudValues, references, null);
+		rm.insertRecord(r, "Student");
+		
+		//get
+		results = rm.getRecord("Student", "age", "java.lang.Integer", "20");
 		for(AbstractRecord rec : results)
 		{
 			System.out.printf("< %s: %s, %s: %s, %s: %s >\n",
 					rec.getColumnNames()[0],rec.getValues()[0],
 					rec.getColumnNames()[2],rec.getValues()[2],
-					rec.getColumnNames()[1],rec.getValues()[1]);
-					
+					rec.getColumnNames()[1],rec.getValues()[1]);		
 		}
+		
+		//drop table
+		rm.dropTable("Student");
 	}
 
 	private MetaData openTable(String tableName){
