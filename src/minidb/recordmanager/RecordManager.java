@@ -57,7 +57,7 @@ public class RecordManager implements IRecordManager{
 					rec.getColumnNames()[1],rec.getValues()[1]);		
 		
 		//drop table
-		rm.dropTable("Student");
+		//rm.dropTable("Student");
 	}
 
 	private MetaData openTable(String tableName){

@@ -14,7 +14,7 @@ import java.util.Arrays;
 
 public class StorageManager implements IStorageManager{
 	
-	public static final int headerSize = 512;
+	public static final int headerSize = 104;
 	private int blockSize;
 	private String myProjPath = System.getProperty("user.dir") + "/";
 	private ArrayList<AbstractDBFile> myOpenDBFiles;
