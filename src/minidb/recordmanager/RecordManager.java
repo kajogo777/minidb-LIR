@@ -1,6 +1,5 @@
 package minidb.recordmanager;
 
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -27,12 +26,12 @@ public class RecordManager implements IRecordManager{
 		
 		//insert
 		String[] mahmoudValues = {"3", "mahmoud", "20"};
-		for(int i = 1; i <= 10; i++)
+		for(int i = 1; i <= 8400; i++)
 		{
 			mahmoudValues[0] = "" + i;
 			mahmoudValues[2] = "" + 20;
 			Record r = new Record( columnNames, dataTypes, mahmoudValues, references, null);
-			rm.insertRecord(r, "Student");
+			rm.insertRecord(r, "Student");			
 		}
 		
 		//update
@@ -52,12 +51,10 @@ public class RecordManager implements IRecordManager{
 		//get
 		results = rm.getRecord("Student", "age", "java.lang.Integer", "20");
 		for(AbstractRecord rec : results)
-		{
 			System.out.printf("< %s: %s, %s: %s, %s: %s >\n",
 					rec.getColumnNames()[0],rec.getValues()[0],
 					rec.getColumnNames()[2],rec.getValues()[2],
 					rec.getColumnNames()[1],rec.getValues()[1]);		
-		}
 		
 		//drop table
 		rm.dropTable("Student");
@@ -104,7 +101,6 @@ public class RecordManager implements IRecordManager{
 					mt.bitArray.add(0, tmp);
 				}
 			}
-			
 			return mt;
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -130,6 +126,7 @@ public class RecordManager implements IRecordManager{
 			
 			block.setData(metaInfo.getBytes());
 			storagemanager.writeBlock(0, NewFile,block);
+			storagemanager.closeFile(NewFile);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}	
@@ -192,12 +189,13 @@ public class RecordManager implements IRecordManager{
 								recs.add(r);
 							}
 						}
-					}
+					}		
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
 			}
 		}	
+		mt.closeTableFile();
 		AbstractRecord[] result = new AbstractRecord[recs.size()];
 		for(int i = 0; i < recs.size(); i++)
 			result[i] = recs.get(i);	
@@ -211,6 +209,7 @@ public class RecordManager implements IRecordManager{
 	    RecordID index = ((Record)r).getKey();			
 		mt.clearSlot(index);
 		mt.saveTableMetaData();
+		mt.closeTableFile();
 	}
 
 		
@@ -235,10 +234,10 @@ public class RecordManager implements IRecordManager{
 				
 				b.setData(array);
 				sm.writeBlock(index.getBlockNumber() +1, mt.dbFile, b);
-				
+				mt.closeTableFile();
 	       } catch (IOException e) {
 				e.printStackTrace();
-			} 
+		} 
 	}
 
 	@Override
@@ -265,6 +264,7 @@ public class RecordManager implements IRecordManager{
 			sm.writeBlock(index.getBlockNumber()+1, mt.dbFile, b);
 			mt.fillSlot(index);
 			mt.saveTableMetaData();
+			mt.closeTableFile();
 		} catch (IOException e) {
 			e.printStackTrace();
 		} 
@@ -531,4 +531,13 @@ class MetaData{
 		}
 	}
 
+	public void closeTableFile()
+	{
+		try {
+			StorageManager sm = new StorageManager();
+			sm.closeFile(dbFile);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 }
