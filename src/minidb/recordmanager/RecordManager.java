@@ -26,7 +26,7 @@ public class RecordManager implements IRecordManager{
 		
 		//insert
 		String[] mahmoudValues = {"3", "mahmoud", "20"};
-		for(int i = 1; i <= 8400; i++)
+		for(int i = 1; i <= 10; i++)//8400
 		{
 			mahmoudValues[0] = "" + i;
 			mahmoudValues[2] = "" + 20;
@@ -38,6 +38,7 @@ public class RecordManager implements IRecordManager{
 		AbstractRecord[] results = rm.getRecord("Student", "age", "java.lang.Integer", "20");
 		Record temp = (Record) results[3];
 		temp.values[1] = "George";
+		temp.values[2] = "20";
 		rm.updateRecord(temp, "Student");
 		
 		//delete
@@ -57,7 +58,7 @@ public class RecordManager implements IRecordManager{
 					rec.getColumnNames()[1],rec.getValues()[1]);		
 		
 		//drop table
-		//rm.dropTable("Student");
+		rm.dropTable("Student");
 	}
 
 	private MetaData openTable(String tableName){
@@ -93,7 +94,7 @@ public class RecordManager implements IRecordManager{
 				sm.appendEmptyBlock(mt.dbFile);
 				mt.addEmptyBlock();
 			}else{
-				byte[] bitMap = Arrays.copyOfRange(metaBlock.getData(), bitMapOffset, bitMapOffset+mt.dbFile.getTotalNumberOfBlocks() * ((mt.slotsPerBlock + 7) / 8));// ((mt.slotsPerBlock+31)/32)*4);
+				byte[] bitMap = Arrays.copyOfRange(metaBlock.getData(), bitMapOffset, bitMapOffset+mt.dbFile.getTotalNumberOfBlocks() * ((mt.slotsPerBlock + 7) / 8));
 				
 				for(int j = 0; j < mt.dbFile.getTotalNumberOfBlocks()-1; j++)
 				{
@@ -175,18 +176,14 @@ public class RecordManager implements IRecordManager{
 						if(!mt.isFree(ri)){
 							boolean match = true;
 							int index = (slot*mt.slotSize)+offset;
-							//match = Arrays.equals( Arrays.copyOfRange(block, index, index+valueInBytes.length) ,valueInBytes);
-							for(int j = 0; j < valueInBytes.length; j++)
+							for(int j = 0; j < valueInBytes.length && match; j++)
 								if(block[index + j] != valueInBytes[j])
-								{
 									match = false;
-									break;
-								}
+							
 							if(match)
 							{
 								String[] values = mt.valuesToString(Arrays.copyOfRange(block, (slot*mt.slotSize), (slot*mt.slotSize)+mt.slotSize));
-								Record r = new Record(mt.columnNames,mt.dataTypes, values,mt.references,ri);
-								recs.add(r);
+								recs.add(new Record(mt.columnNames,mt.dataTypes, values,mt.references,ri));
 							}
 						}
 					}		
