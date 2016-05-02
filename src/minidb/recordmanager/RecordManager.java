@@ -26,7 +26,7 @@ public class RecordManager implements IRecordManager{
 		
 		//insert
 		String[] mahmoudValues = {"3", "mahmoud", "20"};
-		for(int i = 1; i <= 10; i++)//8400
+		for(int i = 1; i <= 8300; i++)//8400
 		{
 			mahmoudValues[0] = "" + i;
 			mahmoudValues[2] = "" + 20;
@@ -58,7 +58,7 @@ public class RecordManager implements IRecordManager{
 					rec.getColumnNames()[1],rec.getValues()[1]);		
 		
 		//drop table
-		rm.dropTable("Student");
+		//rm.dropTable("Student");
 	}
 
 	private MetaData openTable(String tableName){
