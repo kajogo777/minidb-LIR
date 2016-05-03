@@ -15,6 +15,146 @@ import minidb.storagemanager.DBFile;
 import minidb.storagemanager.StorageManager;
 
 public class IndexManager implements IIndexManager{
+	
+	public static void main(String[] args) throws AbstractIndexManagerException
+	{
+		//test createBTree
+		IndexManager im = new IndexManager();
+		BTree bt = (BTree) im.createBTree("trialIndex", 3);
+		
+		InnerNode nroot  = new InnerNode(3);
+		nroot.getKeys()[0] = 3;
+		nroot.setKeysN(nroot.getKeysN()+1);
+		
+		InnerNode nl  = new InnerNode(3);
+		nl.getKeys()[0] = 2;
+		nl.setKeysN(nl.getKeysN()+1);
+		
+		InnerNode nr  = new InnerNode(3);
+		nr.getKeys()[0] = 4;
+		nr.getKeys()[1] = 5;
+		nr.setKeysN(nr.getKeysN()+2);
+		
+		LeafNode l1 = new LeafNode(3);
+		l1.getKeys()[0] = 1;
+		l1.getValues()[0] = new RecordID();
+		l1.getValues()[0].setBlockNumber(1);
+		l1.getValues()[0].setSlotNumber(1);
+		l1.setKeysN(l1.getKeysN()+1);
+		
+		LeafNode l2 = new LeafNode(3);
+		l2.getKeys()[0] = 2;
+		l2.getValues()[0] = new RecordID();
+		l2.getValues()[0].setBlockNumber(1);
+		l2.getValues()[0].setSlotNumber(2);
+		l2.setKeysN(l2.getKeysN()+1);
+		
+		LeafNode l3 = new LeafNode(3);
+		l3.getKeys()[0] = 3;
+		l3.getValues()[0] = new RecordID();
+		l3.getValues()[0].setBlockNumber(1);
+		l3.getValues()[0].setSlotNumber(3);
+		l3.setKeysN(l3.getKeysN()+1);
+		
+		LeafNode l4 = new LeafNode(3);
+		l4.getKeys()[0] = 4;
+		l4.getValues()[0] = new RecordID();
+		l4.getValues()[0].setBlockNumber(1);
+		l4.getValues()[0].setSlotNumber(4);
+		l4.setKeysN(l4.getKeysN()+1);
+		
+		LeafNode l5 = new LeafNode(3);
+		l5.getKeys()[0] = 5;
+		l5.getValues()[0] = new RecordID();
+		l5.getValues()[0].setBlockNumber(1);
+		l5.getValues()[0].setSlotNumber(5);
+		l5.getKeys()[1] = 6;
+		l5.getValues()[1] = new RecordID();
+		l5.getValues()[1].setBlockNumber(1);
+		l5.getValues()[1].setSlotNumber(6);
+		l5.getKeys()[2] = 7;
+		l5.getValues()[2] = new RecordID();
+		l5.getValues()[2].setBlockNumber(1);
+		l5.getValues()[2].setSlotNumber(7);
+		l5.setKeysN(l5.getKeysN()+3);
+		
+		l1.setNext(l2);
+		l2.setNext(l3);
+		l3.setNext(l4);
+		l4.setNext(l5);
+		l5.setNext(null);
+		
+		nl.getChildren()[0] = l1;
+		nl.getChildren()[1] = l2;
+		
+		nr.getChildren()[0] = l3;
+		nr.getChildren()[1] = l4;
+		nr.getChildren()[2] = l5;
+		
+		nroot.getChildren()[0] = nl;
+		nroot.getChildren()[1] = nr;
+		
+		bt.setRoot(nroot);
+		
+		//test closeBTree
+		im.closeBTree(bt);
+		
+		//test openBTree
+		bt = (BTree) im.openBTree("trialIndex");
+		
+		Queue<Node> queue = new LinkedList<Node>();	
+		queue.add(bt.getRoot());
+		while(!queue.isEmpty()) {
+			Node node = (Node)queue.remove();	
+			
+			if(node instanceof InnerNode)
+			{		
+				System.out.printf("\n\nInnerNode: %d\nkeys: ", node.hashCode()%123);
+				
+				
+				for(int i = 0; i < node.getKeysN(); i++)
+				{
+					System.out.printf("%3d  ",node.getKeys()[i]);
+				}
+				
+				System.out.print("\nchildren: ");
+				
+				for(int i = 0; i < node.getKeysN()+1; i++)
+				{
+					System.out.printf("%3d  ",((InnerNode) node).getChildren()[i].hashCode()%123);
+					queue.add(((InnerNode) node).getChildren()[i]);	
+				}
+			}else{
+				System.out.printf("\n\nLeafNode: %d\nkeys: ", node.hashCode()%123);
+				
+				
+				for(int i = 0; i < node.getKeysN(); i++)
+				{
+					System.out.printf("%3d  ",node.getKeys()[i]);
+				}
+				
+				System.out.print("\nvalues: ");
+				
+				for(int i = 0; i < node.getKeysN(); i++)
+				{
+					System.out.printf("%d:%d  ",((LeafNode) node).getValues()[i].getBlockNumber(), ((LeafNode) node).getValues()[i].getSlotNumber());
+				}
+				
+				System.out.printf("\nnext: %d", ((LeafNode) node).getNext() == null? 0 : ((LeafNode) node).getNext().hashCode()%123);
+			}
+		}
+		System.out.println();
+		
+		//test findkey
+		RecordID rid = im.findKey(bt, 6);
+		System.out.printf("key %d in slot %d:%d\n", 6, rid.getBlockNumber(), rid.getSlotNumber());
+		
+		//test get number of nodes
+		System.out.printf("number of nodes is %d\n", im.getNumOfNodes(bt));
+		
+		//test get number of entries
+		System.out.printf("number of entries is %d\n", im.getNumOfEntries(bt));
+	}
 
 	@Override
 	public void init() {
@@ -26,10 +166,13 @@ public class IndexManager implements IIndexManager{
 		StorageManager sm = new StorageManager();
 		try {
 			sm.createFile(filePath);
+			BTree b = new BTree(n);
+			b.setFileName(filePath);
+			return b;
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		return new BTree(n);
+		return null;
 	}
 
 	@Override
@@ -44,7 +187,7 @@ public class IndexManager implements IIndexManager{
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
+		//n = 3;//TODO for testing only
 		StorageManager sm = new StorageManager();
 		try {
 			DBFile indexFile = (DBFile) sm.openFile(filePath);
@@ -54,7 +197,7 @@ public class IndexManager implements IIndexManager{
 			connectLeaves(root);
 			
 			bt.setRoot(root);
-	
+			return bt;
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -75,11 +218,13 @@ public class IndexManager implements IIndexManager{
 			offset += 4;
 			
 			//populate keys
-			for(int i = 0; offset < n.getKeysN()*4; offset+= 4, i++)
+			for(int i = 0; i < n.getKeysN(); offset+= 4, i++)
+			{
 				n.getKeys()[i] = ByteBuffer.wrap(Arrays.copyOfRange(curBlck.getData(), offset, offset+4)).getInt();
+			}
 			
 			//populate children
-			for(int i = 0; offset < (n.getKeysN()+1)*4; offset+= 4, i++)
+			for(int i = 0; i < n.getKeysN()+1; offset+= 4, i++)
 			{
 				int childBlck = ByteBuffer.wrap(Arrays.copyOfRange(curBlck.getData(), offset, offset+4)).getInt();
 				n.getChildren()[i] = getNode(f, childBlck, degree);
@@ -92,11 +237,11 @@ public class IndexManager implements IIndexManager{
 			offset += 4;
 			
 			//populate keys
-			for(int i = 0; offset < n.getKeysN()*4; offset+= 4, i++)
+			for(int i = 0; i < n.getKeysN(); offset+= 4, i++)
 				n.getKeys()[i] = ByteBuffer.wrap(Arrays.copyOfRange(curBlck.getData(), offset, offset+4)).getInt();
 			
 			//populate pointers
-			for(int i = 0; offset < n.getKeysN()*8; offset+= 8, i++)
+			for(int i = 0; i < n.getKeysN(); offset+= 8, i++)
 			{
 				RecordID rid = new RecordID();
 				rid.setBlockNumber( ByteBuffer.wrap(Arrays.copyOfRange(curBlck.getData(), offset, offset+4)).getInt() );
@@ -118,8 +263,8 @@ public class IndexManager implements IIndexManager{
 			
 			if(node instanceof InnerNode)
 			{
-				for(Node nc : ((InnerNode) node).getChildren())
-					queue.add(nc);
+				for(int i = 0; i < node.getKeysN()+1; i++)
+					queue.add(((InnerNode) node).getChildren()[i]);
 			}else{
 				if(prev == null)
 					prev = (LeafNode) node;
@@ -137,7 +282,7 @@ public class IndexManager implements IIndexManager{
 		try {
 			
 			DBFile indexFile = (DBFile) sm.openFile(((BTree)t).getFileName());
-			int blckN = 0;
+			int blckN = 1;
 			int curBlck = 0;
 		
 			Queue<Node> queue = new LinkedList<Node>();	
@@ -151,12 +296,14 @@ public class IndexManager implements IIndexManager{
 				bf.putInt(node.getKeysN());
 				for(byte b : bf.array())
 					blk.getData()[offset++] = b;
+				bf.clear();
 				
 				for(int i = 0; i < node.getKeysN(); i++)
 				{
 					bf.putInt(node.getKeys()[i]);
 					for(byte b : bf.array())
 						blk.getData()[offset++] = b;
+					bf.clear();
 				}
 
 				if(node instanceof InnerNode)
@@ -169,6 +316,7 @@ public class IndexManager implements IIndexManager{
 						bf.putInt(blckN++);
 						for(byte b : bf.array())
 							blk.getData()[offset++] = b;
+						bf.clear();
 					}
 					
 				}else{
@@ -180,9 +328,11 @@ public class IndexManager implements IIndexManager{
 						bf.putInt(((LeafNode)node).getValues()[i].getBlockNumber());
 						for(byte b : bf.array())
 							blk.getData()[offset++] = b;
+						bf.clear();
 						bf.putInt(((LeafNode)node).getValues()[i].getSlotNumber());
 						for(byte b : bf.array())
 							blk.getData()[offset++] = b;
+						bf.clear();
 					}
 				}	
 				sm.writeBlock(curBlck++, indexFile, blk);
@@ -215,8 +365,9 @@ public class IndexManager implements IIndexManager{
 			return 1;
 		
 		int sum = 0;
-		for(Node nc : ((InnerNode)n).getChildren())
-			sum += countHelper(nc);
+		
+		for(int i = 0; i < n.getKeysN()+1; i++)
+			sum += countHelper(((InnerNode)n).getChildren()[i]);
 		
 		return sum + 1;
 	}
@@ -229,13 +380,13 @@ public class IndexManager implements IIndexManager{
 	private int countEntriesHelper(Node n)
 	{
 		if(n instanceof LeafNode)
-			return ((LeafNode)n).getKeysN();
-		
-		int sum = 0;
-		for(Node nc : ((InnerNode)n).getChildren())
-			sum += countHelper(nc);
-		
-		return sum;
+		{
+			int entries = ((LeafNode)n).getKeysN();
+			if(((LeafNode)n).getNext() != null)
+				entries += countEntriesHelper(((LeafNode)n).getNext());
+			return entries;
+		}
+		return countEntriesHelper(((InnerNode)n).getChildren()[0]);
 	}
 
 	@Override
@@ -248,12 +399,14 @@ public class IndexManager implements IIndexManager{
 		if(n instanceof LeafNode)
 		{
 			for(int i = 0; i < n.getKeysN(); i++)
-				if(n.getKeys()[i].equals(key))
+				if(key.compareTo(n.getKeys()[i]) == 0)
 					return ((LeafNode) n).getValues()[i];
 		}else{
 			for(int i = 0; i < n.getKeysN(); i++)
-				if(n.getKeys()[i].compareTo(key) >= 0)
-					return searchHelper(key, ((InnerNode) n).getChildren()[i+1]);
+				if(key.compareTo(n.getKeys()[i]) < 0)
+					return searchHelper(key, ((InnerNode) n).getChildren()[i]);
+			
+			return searchHelper(key, ((InnerNode) n).getChildren()[n.getKeysN()]);
 		}
 		return null;
 	}
