@@ -133,7 +133,64 @@ public class IndexManager implements IIndexManager{
 	
 	@Override
 	public void closeBTree(AbstractBTree t) throws AbstractIndexManagerException {
-		// TODO Auto-generated method stub
+		StorageManager sm = new StorageManager();
+		try {
+			
+			DBFile indexFile = (DBFile) sm.openFile(((BTree)t).getFileName());
+			int blckN = 0;
+			int curBlck = 0;
+		
+			Queue<Node> queue = new LinkedList<Node>();	
+			queue.add(((BTree)t).getRoot());
+			while(!queue.isEmpty()) {
+				Node node = (Node)queue.remove();
+				int offset = 1;
+				ByteBuffer bf = ByteBuffer.allocate(4);
+				Block blk = new Block();
+				
+				bf.putInt(node.getKeysN());
+				for(byte b : bf.array())
+					blk.getData()[offset++] = b;
+				
+				for(int i = 0; i < node.getKeysN(); i++)
+				{
+					bf.putInt(node.getKeys()[i]);
+					for(byte b : bf.array())
+						blk.getData()[offset++] = b;
+				}
+
+				if(node instanceof InnerNode)
+				{	
+					blk.getData()[0] = 0;
+					
+					for(int i = 0; i < node.getKeysN()+1; i++)
+					{
+						queue.add(((InnerNode) node).getChildren()[i]);
+						bf.putInt(blckN++);
+						for(byte b : bf.array())
+							blk.getData()[offset++] = b;
+					}
+					
+				}else{
+					
+					blk.getData()[0] = 1;
+					
+					for(int i = 0; i < node.getKeysN(); i++)
+					{
+						bf.putInt(((LeafNode)node).getValues()[i].getBlockNumber());
+						for(byte b : bf.array())
+							blk.getData()[offset++] = b;
+						bf.putInt(((LeafNode)node).getValues()[i].getSlotNumber());
+						for(byte b : bf.array())
+							blk.getData()[offset++] = b;
+					}
+				}	
+				sm.writeBlock(curBlck++, indexFile, blk);
+			}
+		
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		
 	}
 
