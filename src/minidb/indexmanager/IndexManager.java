@@ -1,6 +1,7 @@
 package minidb.indexmanager;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
@@ -8,6 +9,7 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.Vector;
 
 import minidb.recordmanager.RecordID;
 import minidb.storagemanager.Block;
@@ -95,6 +97,7 @@ public class IndexManager implements IIndexManager{
 		nroot.getChildren()[1] = nr;
 		
 		bt.setRoot(nroot);
+		//im.printBTree("trialIndex", output);
 		
 		//test closeBTree
 		im.closeBTree(bt);
@@ -428,5 +431,96 @@ public class IndexManager implements IIndexManager{
 		// TODO Auto-generated method stub
 		
 	}
+	public void printBTree(BTree t,BufferedWriter output) throws AbstractIndexManagerException, IOException {
+
+		// TODO Auto-generated method stub
+
+		Vector<Node> nodeList = new Vector();
+
+		       
+
+		        // put the root of the tree onto the stack to start the process
+
+		 
+
+		        nodeList.add(t.getRoot());
+
+
+
+		        boolean done = false;
+
+		        while(! done) {
+
+		        // this vector will hold all the children of the nodes in the current level
+
+		            Vector<Node> nextLevelList = new Vector();
+
+		            String toprint = "";
+
+		           
+
+		            // for each node in the list convert it to a string and add any children to the nextlevel stack
+
+		            for(int i=0; i < nodeList.size(); i++) {
+
+		           
+
+		            // get the node at position i
+
+		                Node node = (Node)nodeList.elementAt(i);
+
+		               
+
+		                // convert the node into a string
+
+		                toprint += node.toString() + " ";
+
+		               
+
+		                // if this is a leaf node we need only print the contents
+
+		                if(node instanceof LeafNode) {
+
+		                    done = true;
+
+		                }
+
+		                // if this is a tree node print the contents and populate
+
+		                // the temp vector with nodes that node i points to
+
+		                else
+
+		                {
+
+		                    for(int j=0; j < node.getKeysN()+1 ; j++) {
+
+		                        //nextLevelList.add( ((InnerNode)node).getPointerAt(j) );
+
+		                    nextLevelList.add( ((InnerNode)node).getChildren()[j] );
+
+		                    }
+
+		                }
+
+		            }
+
+		           
+
+		            // print the level
+
+		            output.write(toprint + System.getProperty("line.separator"));
+
+		           
+
+		            // go to the next level and print it
+
+		            nodeList = nextLevelList;
+
+		        }
+
+
+
+		}
 
 }
