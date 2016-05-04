@@ -1,8 +1,8 @@
 package minidb.indexmanager;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -201,6 +201,7 @@ public class IndexManager implements IIndexManager{
 		im.insertKey(bt, 60, r);
 		
 		printConf(bt);
+		//im.printBTree(bt);
 	}
 	
 	private static void printConf(BTree bt)
@@ -721,11 +722,12 @@ public class IndexManager implements IIndexManager{
 		// TODO Auto-generated method stub
 		
 	}
-	public void printBTree(BTree t,BufferedWriter output) throws AbstractIndexManagerException, IOException {
+	public void printBTree(BTree t) throws AbstractIndexManagerException {
 
 		// TODO Auto-generated method stub
-
-		Vector<Node> nodeList = new Vector();
+		PrintWriter output = new PrintWriter(System.out);
+		
+		Vector<Node> nodeList = new Vector<Node>();
 
 		       
 
@@ -743,7 +745,7 @@ public class IndexManager implements IIndexManager{
 
 		        // this vector will hold all the children of the nodes in the current level
 
-		            Vector<Node> nextLevelList = new Vector();
+		            Vector<Node> nextLevelList = new Vector<Node>();
 
 		            String toprint = "";
 
@@ -799,9 +801,9 @@ public class IndexManager implements IIndexManager{
 
 		            // print the level
 
-		            output.write(toprint + System.getProperty("line.separator"));
+		            output.print(toprint + System.getProperty("line.separator"));
 
-		           
+		            output.flush();
 
 		            // go to the next level and print it
 
