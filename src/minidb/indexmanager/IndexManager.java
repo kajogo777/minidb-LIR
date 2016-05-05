@@ -165,42 +165,73 @@ public class IndexManager implements IIndexManager{
 		
 		RecordID r = new RecordID();
 		
-		r.setBlockNumber(1);
-		r.setSlotNumber(1);
-		im.insertKey(bt, 1, r);
+//		r.setBlockNumber(1);
+//		r.setSlotNumber(1);
+//		im.insertKey(bt, 1, r);
+//		
+//		r = new RecordID();
+//		r.setBlockNumber(2);
+//		r.setSlotNumber(3);
+//		im.insertKey(bt, 11, r);
+//		
+//		r = new RecordID();
+//		r.setBlockNumber(1);
+//		r.setSlotNumber(2);
+//		im.insertKey(bt, 13, r);
+//		
+//		r = new RecordID();
+//		r.setBlockNumber(3);
+//		r.setSlotNumber(5);
+//		im.insertKey(bt, 17, r);
+//		
+//		
+//		r = new RecordID();
+//		r.setBlockNumber(4);
+//		r.setSlotNumber(4);
+//		im.insertKey(bt, 23, r);
+//		
+//		r = new RecordID();
+//		r.setBlockNumber(3);
+//		r.setSlotNumber(2);
+//		im.insertKey(bt, 52, r);
+//		
+//		r = new RecordID();
+//		r.setBlockNumber(5);
+//		r.setSlotNumber(1);
+//		im.insertKey(bt, 60, r);
 		
-		r = new RecordID();
-		r.setBlockNumber(2);
-		r.setSlotNumber(3);
-		im.insertKey(bt, 11, r);
-		
-		r = new RecordID();
-		r.setBlockNumber(1);
-		r.setSlotNumber(2);
-		im.insertKey(bt, 13, r);
-		
-		r = new RecordID();
-		r.setBlockNumber(3);
-		r.setSlotNumber(5);
-		im.insertKey(bt, 17, r);
-		
-		
-		r = new RecordID();
-		r.setBlockNumber(4);
-		r.setSlotNumber(4);
-		im.insertKey(bt, 23, r);
-		
-		r = new RecordID();
-		r.setBlockNumber(3);
-		r.setSlotNumber(2);
-		im.insertKey(bt, 52, r);
-		
-		r = new RecordID();
-		r.setBlockNumber(5);
-		r.setSlotNumber(1);
-		im.insertKey(bt, 60, r);
-		
-		printConf(bt);
+//		r = new RecordID();
+//		r.setBlockNumber(5);
+//		r.setSlotNumber(1);
+//		im.insertKey(bt, 1, r);
+//		
+//		r = new RecordID();
+//		r.setBlockNumber(5);
+//		r.setSlotNumber(1);
+//		im.insertKey(bt, 1000, r);
+//		
+//		r = new RecordID();
+//		r.setBlockNumber(5);
+//		r.setSlotNumber(1);
+//		im.insertKey(bt, 500, r);
+//		
+//		r = new RecordID();
+//		r.setBlockNumber(5);
+//		r.setSlotNumber(1);
+//		im.insertKey(bt, 250, r);
+//		
+//		r = new RecordID();
+//		r.setBlockNumber(5);
+//		r.setSlotNumber(1);
+//		im.insertKey(bt, 750, r);
+//		
+//		r = new RecordID();
+//		r.setBlockNumber(5);
+//		r.setSlotNumber(1);
+//		im.insertKey(bt, 100, r);
+//		
+//		im.deleteKey(bt, 1000);
+//		printConf(bt);
 		//im.printBTree(bt);
 	}
 	
@@ -281,7 +312,7 @@ public class IndexManager implements IIndexManager{
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		//n = 3;//TODO for testing only
+		//n = 2;//TODO for testing only
 		StorageManager sm = new StorageManager();
 		try {
 			DBFile indexFile = (DBFile) sm.openFile(filePath);
@@ -518,7 +549,8 @@ public class IndexManager implements IIndexManager{
 			newRoot.getChildren()[0] = ((BTree)t).getRoot();
 			newRoot.getChildren()[1] = ret;
 			((BTree)t).setRoot(newRoot);
-		}	
+		}
+		connectLeaves(((BTree)t).getRoot());
 	}
 	
 	private Node insertHelper(Node n, Integer key, RecordID r)
@@ -561,6 +593,7 @@ public class IndexManager implements IIndexManager{
 					insertAtKey = i;
 					ret = insertHelper( ((InnerNode) n).getChildren()[i], key, r);
 					inserted = true;
+					break;
 				}
 			
 			if(!inserted)
@@ -604,7 +637,7 @@ public class IndexManager implements IIndexManager{
 		tempChildren[insertAtKey] = n.getChildren()[insertAtKey];
 		tempChildren[insertAtKey+1] = newChild;
 		
-		if(insertAtKey < n.getKeys().length)
+		if(insertAtKey < n.getKeysN())
 		{
 			tempKeys[insertAtKey+1] = n.getKeys()[insertAtKey];
 			
@@ -613,7 +646,7 @@ public class IndexManager implements IIndexManager{
 				tempKeys[i+1] = n.getKeys()[i];
 				tempChildren[i+1] = n.getChildren()[i];
 			}
-			tempChildren[n.getKeys().length] = n.getChildren()[n.getKeys().length];
+			tempChildren[n.getKeys().length+1] = n.getChildren()[n.getKeys().length];
 		}
 		
 		n.setKeys(new Integer[n.getKeys().length]);
@@ -636,12 +669,9 @@ public class IndexManager implements IIndexManager{
 		{
 			in.getKeys()[i-inLeft-1] = tempKeys[i];
 			in.getChildren()[i-inLeft-1] = tempChildren[i];
-			if(i == tempKeys.length-1)
-			{
-				in.getChildren()[i-inLeft] = tempChildren[i+1];
-			}
 			in.setKeysN(in.getKeysN()+1);
-		}	
+		}
+		in.getChildren()[in.getKeysN()] = tempChildren[tempKeys.length];
 		return in;
 	}
 	
@@ -650,29 +680,30 @@ public class IndexManager implements IIndexManager{
 		Integer[] tempkeys = new Integer[n.getKeys().length+1];
 		RecordID[] tempValues = new RecordID[n.getKeys().length+1];
 		boolean done = false;
+		int indx = 0;
 		
-		for(int i = 0; i < n.getKeys().length; i++)
+		for(int i = 0; i < n.getKeysN(); i++, indx++)
 		{
 			if(!done)
 			{
 				if(key.compareTo(n.getKeys()[i]) < 0)
 				{
-					tempkeys[i] = key;
-					tempValues[i] = r;
-					
-					tempkeys[i+1] = n.getKeys()[i];
-					tempValues[i+1] = n.getValues()[i];
-					i++;
+					tempkeys[indx] = key;
+					tempValues[indx] = r;
+					indx++;
+					tempkeys[indx] = n.getKeys()[i];
+					tempValues[indx] = n.getValues()[i];
 					done = true;
 				}else{
-					tempkeys[i] = n.getKeys()[i];
-					tempValues[i] = n.getValues()[i];
+					tempkeys[indx] = n.getKeys()[i];
+					tempValues[indx] = n.getValues()[i];
 				}
 			}else{
-				tempkeys[i+1] = n.getKeys()[i];
-				tempValues[i+1] = n.getValues()[i];
+				tempkeys[indx] = n.getKeys()[i];
+				tempValues[indx] = n.getValues()[i];
 			}
 		}
+
 		if(!done)
 		{
 			tempkeys[n.getKeys().length] = key;
@@ -693,6 +724,7 @@ public class IndexManager implements IIndexManager{
 		}
 		
 		LeafNode lf = new LeafNode(n.getKeys().length);
+		lf.setKeysN(0);
 		
 		for(int i = inLeft; i < n.getKeys().length+1; i++)
 		{
@@ -713,8 +745,204 @@ public class IndexManager implements IIndexManager{
 
 	@Override
 	public void deleteKey(AbstractBTree t, Integer key) throws AbstractIndexManagerException {
-		// TODO Auto-generated method stub
+		Node ret = deleteHelper(((BTree)t).getRoot(), key);
 		
+		if(ret != null && ret.getKeysN() == 0 && ret instanceof InnerNode)
+				((BTree)t).setRoot(((InnerNode)ret).getChildren()[0]);
+
+	}
+	
+	private Node deleteHelper(Node n, Integer key)
+	{
+		if(n instanceof LeafNode)
+		{
+			boolean found = false;
+			
+			for(int i = 0; i < n.getKeysN(); i++)
+			{
+				if(key.compareTo(n.getKeys()[i]) == 0)
+					found = true;
+				if(found)
+				{
+					if(i == n.getKeysN()-1)
+					{
+						n.getKeys()[i] = null;
+						((LeafNode)n).getValues()[i] = null;
+					}
+					else{
+						n.getKeys()[i] = n.getKeys()[i+1];
+						((LeafNode)n).getValues()[i] = ((LeafNode)n).getValues()[i+1];
+					}
+					
+				}
+			}
+			if(found)
+				n.setKeysN(n.getKeysN()-1);
+			
+		}else{
+			boolean deleted = false;
+			Node ret = null;
+			int underflowIndex = 0;
+			for(int i = 0; i < n.getKeysN(); i++)
+				if(key.compareTo(n.getKeys()[i]) < 0)
+				{
+					deleted = true;
+					ret = deleteHelper(((InnerNode) n).getChildren()[i], key);
+					underflowIndex = i;
+				}
+			
+			if(!deleted)
+			{
+				ret = deleteHelper(((InnerNode) n).getChildren()[n.getKeysN()], key);
+				underflowIndex = n.getKeysN();
+			}
+			
+			if(ret != null)
+			{
+				if(ret instanceof LeafNode)
+				{
+					if( underflowIndex > 0 && ((InnerNode)n).getChildren()[underflowIndex-1].getKeysN() > (n.getKeys().length/2))
+					{
+						LeafNode lft = (LeafNode) ((InnerNode)n).getChildren()[underflowIndex-1];
+						
+						insertHelper(ret, lft.getKeys()[lft.getKeysN()-1], lft.getValues()[lft.getKeysN()-1]);
+						
+						deleteHelper(lft, lft.getKeys()[lft.getKeysN()-1]);
+						n.getKeys()[underflowIndex-1] = traverseLeft(ret);
+					}else 
+						if(underflowIndex < n.getKeysN() && ((InnerNode)n).getChildren()[underflowIndex+1].getKeysN() > (n.getKeys().length/2))
+					{
+						LeafNode rght = (LeafNode) ((InnerNode)n).getChildren()[underflowIndex+1];
+						
+						insertHelper(ret, rght.getKeys()[0], rght.getValues()[0]);
+						
+						deleteHelper(rght, rght.getKeys()[0]);
+						n.getKeys()[underflowIndex] = traverseLeft(rght);
+					}else 
+						if(underflowIndex > 0)
+					{
+						LeafNode lft = (LeafNode) ((InnerNode)n).getChildren()[underflowIndex-1];
+						
+						for(int i = 0; i < ret.getKeysN(); i++)
+							insertHelper(lft, ret.getKeys()[i], ((LeafNode)ret).getValues()[i]);
+						
+						for(int i = underflowIndex-1; i < n.getKeysN(); i++)
+						{
+							n.getKeys()[i] = n.getKeys()[i+1];
+							((InnerNode)n).getChildren()[i+1] = ((InnerNode)n).getChildren()[i+2];
+						}
+						
+						n.setKeysN(n.getKeysN()-1);
+						lft.setNext(((LeafNode)ret).getNext());
+					}else 
+						if(underflowIndex < n.getKeysN())
+					{
+						LeafNode rght = (LeafNode) ((InnerNode)n).getChildren()[underflowIndex+1];
+						
+						for(int i = 0; i < ret.getKeysN(); i++)
+							insertHelper(rght, ret.getKeys()[i], ((LeafNode)ret).getValues()[i]);
+						
+						for(int i = underflowIndex-1; i < n.getKeysN(); i++)
+						{
+							n.getKeys()[i] = n.getKeys()[i+1];
+							((InnerNode)n).getChildren()[i] = ((InnerNode)n).getChildren()[i+1];
+						}
+						n.setKeysN(n.getKeysN()-1);
+					}	
+				}else{
+					
+					if( underflowIndex > 0 && ((InnerNode)n).getChildren()[underflowIndex-1].getKeysN() > (n.getKeys().length/2))
+					{
+						InnerNode lft = (InnerNode) ((InnerNode)n).getChildren()[underflowIndex-1];
+						
+						((InnerNode)ret).getChildren()[ret.getKeysN()+1] = ((InnerNode)ret).getChildren()[ret.getKeysN()];
+						for(int i = ret.getKeysN(); i > 0; i--)
+						{
+							ret.getKeys()[i] = ret.getKeys()[i-1];
+							((InnerNode)ret).getChildren()[i] = ((InnerNode)ret).getChildren()[i-1];
+						}
+						ret.getKeys()[0] = traverseLeft(((InnerNode)ret).getChildren()[1]);
+						((InnerNode)ret).getChildren()[0] = lft.getChildren()[lft.getKeysN()];
+						
+						lft.setKeysN(lft.getKeysN()-1);
+						ret.setKeysN(ret.getKeysN()+1);
+					}else 
+						if(underflowIndex < n.getKeysN() && ((InnerNode)n).getChildren()[underflowIndex+1].getKeysN() > (n.getKeys().length/2))
+					{
+						InnerNode rght = (InnerNode) ((InnerNode)n).getChildren()[underflowIndex+1];
+						
+						((InnerNode)ret).getChildren()[ret.getKeysN()+1] = rght.getChildren()[0];
+						ret.getKeys()[ret.getKeysN()] = traverseLeft(rght.getChildren()[0]);
+						
+						for(int i = 0; i < rght.getKeysN()-2; i++)
+						{
+							rght.getKeys()[i] = rght.getKeys()[i+1];
+							rght.getChildren()[i] = rght.getChildren()[i+1];
+						}
+						rght.getChildren()[rght.getKeysN()-1] = rght.getChildren()[rght.getKeysN()];
+						
+						rght.setKeysN(rght.getKeysN()-1);
+						ret.setKeysN(ret.getKeysN()+1);
+					}else 
+						if(underflowIndex > 0)
+					{
+						InnerNode lft = (InnerNode) ((InnerNode)n).getChildren()[underflowIndex-1];
+						
+						lft.getKeys()[lft.getKeysN()] = traverseLeft(((InnerNode)ret).getChildren()[0]);
+						lft.setKeysN(lft.getKeysN()+1);
+						for(int i = 0; i < ret.getKeysN(); i++)
+						{
+							lft.getKeys()[i+lft.getKeysN()+1] = ret.getKeys()[i];
+							lft.getChildren()[i+lft.getKeysN()+1] = ((InnerNode)ret).getChildren()[i];
+							lft.setKeysN(lft.getKeysN()+1);
+						}
+						lft.getKeys()[lft.getKeysN()] = traverseLeft(((InnerNode)ret).getChildren()[ret.getKeysN()]);
+						
+						for(int i = underflowIndex-1; i < n.getKeysN(); i++)
+						{
+							n.getKeys()[i] = n.getKeys()[i+1];
+							((InnerNode)n).getChildren()[i+1] = ((InnerNode)n).getChildren()[i+2];
+						}
+						n.setKeysN(n.getKeysN()-1);
+					}else 
+						if(underflowIndex < n.getKeysN())
+					{
+						InnerNode rght = (InnerNode) ((InnerNode)n).getChildren()[underflowIndex+1];
+						
+						int shift = ((InnerNode)ret).getKeysN()+1;
+						
+						
+						rght.getChildren()[rght.getKeysN()+shift] = rght.getChildren()[rght.getKeysN()];
+						
+						for(int i = rght.getKeysN()-1; i >= 0; i--)
+						{
+							rght.getKeys()[i+shift] = rght.getKeys()[i];
+							rght.getChildren()[i+shift] = rght.getChildren()[i];
+						}
+						
+						rght.getKeys()[shift-1] = traverseLeft(rght.getChildren()[shift]);
+						
+						for(int i = 0; i < ret.getKeysN(); i++)
+						{
+							rght.getKeys()[i] = ret.getKeys()[i];
+							rght.getChildren()[i] = ((InnerNode)ret).getChildren()[i];
+						}
+						
+						rght.getChildren()[ret.getKeysN()] = ((InnerNode)ret).getChildren()[ret.getKeysN()];
+						
+						for(int i = underflowIndex-1; i < n.getKeysN(); i++)
+						{
+							n.getKeys()[i] = n.getKeys()[i+1];
+							((InnerNode)n).getChildren()[i] = ((InnerNode)n).getChildren()[i+1];
+						}
+						n.setKeysN(n.getKeysN()-1);
+					}	
+				}
+			}
+		}
+		if(n.getKeysN() < n.getKeys().length/2)
+			return n;
+		return null;
 	}
 
 	@Override
