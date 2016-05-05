@@ -159,11 +159,11 @@ public class IndexManager implements IIndexManager{
 		
 		
 		
-//		IndexManager im = new IndexManager();
-//		
-//		BTree bt = (BTree) im.createBTree("trial2Btree", 2);
-//		
-//		RecordID r = new RecordID();
+		IndexManager im = new IndexManager();
+		
+		BTree bt = (BTree) im.createBTree("trial2Btree", 2);
+		
+		RecordID r = new RecordID();
 		
 //		r.setBlockNumber(1);
 //		r.setSlotNumber(1);
@@ -200,44 +200,57 @@ public class IndexManager implements IIndexManager{
 //		r.setSlotNumber(1);
 //		im.insertKey(bt, 60, r);
 		
-//		r = new RecordID();
-//		r.setBlockNumber(5);
-//		r.setSlotNumber(1);
-//		im.insertKey(bt, 1, r);
-//		
-//		r = new RecordID();
-//		r.setBlockNumber(5);
-//		r.setSlotNumber(1);
-//		im.insertKey(bt, 1000, r);
-//		
-//		r = new RecordID();
-//		r.setBlockNumber(5);
-//		r.setSlotNumber(1);
-//		im.insertKey(bt, 500, r);
-//		
-//		r = new RecordID();
-//		r.setBlockNumber(5);
-//		r.setSlotNumber(1);
-//		im.insertKey(bt, 250, r);
-//		
-//		r = new RecordID();
-//		r.setBlockNumber(5);
-//		r.setSlotNumber(1);
-//		im.insertKey(bt, 750, r);
-//		
-//		r = new RecordID();
-//		r.setBlockNumber(5);
-//		r.setSlotNumber(1);
-//		im.insertKey(bt, 100, r);
-//		
-//		im.deleteKey(bt, 1000);
-//		im.deleteKey(bt, 750);
-//		
-//		printConf(bt);
+		r = new RecordID();
+		r.setBlockNumber(5);
+		r.setSlotNumber(1);
+		im.insertKey(bt, 1, r);
+		
+		r = new RecordID();
+		r.setBlockNumber(5);
+		r.setSlotNumber(1);
+		im.insertKey(bt, 1000, r);
+		
+		r = new RecordID();
+		r.setBlockNumber(5);
+		r.setSlotNumber(1);
+		im.insertKey(bt, 500, r);
+		
+		r = new RecordID();
+		r.setBlockNumber(5);
+		r.setSlotNumber(1);
+		im.insertKey(bt, 250, r);
+		
+		r = new RecordID();
+		r.setBlockNumber(5);
+		r.setSlotNumber(1);
+		im.insertKey(bt, 750, r);
+		
+		r = new RecordID();
+		r.setBlockNumber(5);
+		r.setSlotNumber(1);
+		im.insertKey(bt, 100, r);
+		
+		System.out.println("_____________________________________");
+		
+		im.printBTree(bt);
+		
+		im.deleteKey(bt, 1000);
+		
+		System.out.println("_____________________________________");
+		
+		im.printBTree(bt);
+		
+		im.deleteKey(bt, 750);
+		
+		System.out.println("_____________________________________");
+		
+		im.printBTree(bt);
+		
+		System.out.println("_____________________________________");
 		//im.printBTree(bt);
 	}
 	
-	private static void printConf(BTree bt)
+	public  void printBTree(BTree bt)
 	{
 		Queue<Node> queue = new LinkedList<Node>();	
 		queue.add(bt.getRoot());
@@ -952,97 +965,5 @@ public class IndexManager implements IIndexManager{
 		// TODO Auto-generated method stub
 		
 	}
-	public void printBTree(BTree t) throws AbstractIndexManagerException {
-
-		// TODO Auto-generated method stub
-		PrintWriter output = new PrintWriter(System.out);
-		
-		Vector<Node> nodeList = new Vector<Node>();
-
-		       
-
-		        // put the root of the tree onto the stack to start the process
-
-		 
-
-		        nodeList.add(t.getRoot());
-
-
-
-		        boolean done = false;
-
-		        while(! done) {
-
-		        // this vector will hold all the children of the nodes in the current level
-
-		            Vector<Node> nextLevelList = new Vector<Node>();
-
-		            String toprint = "";
-
-		           
-
-		            // for each node in the list convert it to a string and add any children to the nextlevel stack
-
-		            for(int i=0; i < nodeList.size(); i++) {
-
-		           
-
-		            // get the node at position i
-
-		                Node node = (Node)nodeList.elementAt(i);
-
-		               
-
-		                // convert the node into a string
-
-		                toprint += node.toString() + " ";
-
-		               
-
-		                // if this is a leaf node we need only print the contents
-
-		                if(node instanceof LeafNode) {
-
-		                    done = true;
-
-		                }
-
-		                // if this is a tree node print the contents and populate
-
-		                // the temp vector with nodes that node i points to
-
-		                else
-
-		                {
-
-		                    for(int j=0; j < node.getKeysN()+1 ; j++) {
-
-		                        //nextLevelList.add( ((InnerNode)node).getPointerAt(j) );
-
-		                    nextLevelList.add( ((InnerNode)node).getChildren()[j] );
-
-		                    }
-
-		                }
-
-		            }
-
-		           
-
-		            // print the level
-
-		            output.print(toprint + System.getProperty("line.separator"));
-
-		            output.flush();
-
-		            // go to the next level and print it
-
-		            nodeList = nextLevelList;
-
-		        }
-
-
-
-		}
 
 }
