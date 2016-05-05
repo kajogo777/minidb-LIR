@@ -159,11 +159,11 @@ public class IndexManager implements IIndexManager{
 		
 		
 		
-		IndexManager im = new IndexManager();
-		
-		BTree bt = (BTree) im.createBTree("trial2Btree", 2);
-		
-		RecordID r = new RecordID();
+//		IndexManager im = new IndexManager();
+//		
+//		BTree bt = (BTree) im.createBTree("trial2Btree", 2);
+//		
+//		RecordID r = new RecordID();
 		
 //		r.setBlockNumber(1);
 //		r.setSlotNumber(1);
@@ -231,6 +231,8 @@ public class IndexManager implements IIndexManager{
 //		im.insertKey(bt, 100, r);
 //		
 //		im.deleteKey(bt, 1000);
+//		im.deleteKey(bt, 750);
+//		
 //		printConf(bt);
 		//im.printBTree(bt);
 	}
@@ -817,7 +819,7 @@ public class IndexManager implements IIndexManager{
 						insertHelper(ret, rght.getKeys()[0], rght.getValues()[0]);
 						
 						deleteHelper(rght, rght.getKeys()[0]);
-						n.getKeys()[underflowIndex] = traverseLeft(rght);
+						n.getKeys()[underflowIndex-1] = traverseLeft(rght);
 					}else 
 						if(underflowIndex > 0)
 					{
@@ -896,7 +898,7 @@ public class IndexManager implements IIndexManager{
 							lft.getChildren()[i+lft.getKeysN()+1] = ((InnerNode)ret).getChildren()[i];
 							lft.setKeysN(lft.getKeysN()+1);
 						}
-						lft.getKeys()[lft.getKeysN()] = traverseLeft(((InnerNode)ret).getChildren()[ret.getKeysN()]);
+						lft.getChildren()[lft.getKeysN()] = ((InnerNode)ret).getChildren()[ret.getKeysN()];
 						
 						for(int i = underflowIndex-1; i < n.getKeysN(); i++)
 						{
