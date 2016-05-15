@@ -1,11 +1,17 @@
 package minidb.recordmanager;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 
+import minidb.indexmanager.AbstractIndexManagerException;
+import minidb.indexmanager.BTree;
+import minidb.indexmanager.IndexManager;
 import minidb.storagemanager.Block;
 import minidb.storagemanager.DBFile;
 import minidb.storagemanager.StorageManager;
@@ -102,6 +108,7 @@ public class RecordManager implements IRecordManager{
 					mt.bitArray.add(0, tmp);
 				}
 			}
+
 			return mt;
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -130,25 +137,67 @@ public class RecordManager implements IRecordManager{
 			storagemanager.closeFile(NewFile);
 		} catch (IOException e) {
 			e.printStackTrace();
-		}	
+		}		
+		for(int i = 0; i < isKey.length; i++)
+			if(isKey[i])
+				createIndex(tableName, columnNames[i]);
 	}
 
 	@Override
 	public void dropTable(String tableName) throws AbstractRecordManagerException {
 		StorageManager sm = new StorageManager();
 		try {
+			MetaData mt = openTable(tableName);	
+			
+			IndexManager im = new IndexManager();
+			for(int i = 0; i < mt.isKey.length; i++)
+			{
+				if(mt.isKey[i])
+				{
+					BTree bt = (BTree) im.openBTree(tableName + "_" + mt.columnNames[i]);
+					im.deleteBTree(bt);
+				}
+			}
+			
+			mt.closeTableFile();
 			sm.deleteFile(tableName);
 		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (AbstractIndexManagerException e) {
 			e.printStackTrace();
 		}
 	}
 
 	@Override
 	public AbstractRecord getRecord(String tableName, RecordID rid)
-			throws AbstractRecordManagerException {
-		// TODO Auto-generated method stub
+			throws AbstractRecordManagerException {		
 		return null;
 	}
+	
+	public AbstractRecord getRecord(String tableName, String columnName, Integer key) throws AbstractRecordManagerException {		
+		MetaData mt = openTable(tableName);
+		StorageManager sm = new StorageManager();
+		IndexManager im = new IndexManager();
+		
+		try {
+			BTree bt = (BTree) im.openBTree(tableName + "_" + columnName);
+			RecordID rid = im.findKey(bt, key);
+			
+			Block b = (Block) sm.readBlock(rid.getBlockNumber(), mt.dbFile);
+			byte[] block = b.getData();
+
+			String[] values = mt.valuesToString(Arrays.copyOfRange(block, (rid.getSlotNumber()*mt.slotSize), (rid.getSlotNumber()*mt.slotSize)+mt.slotSize));
+			
+			return new Record(mt.columnNames,mt.dataTypes, values,mt.references,rid);	
+		} catch (AbstractIndexManagerException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
+
 
 	@Override
 	public AbstractRecord[] getRecord(String tableName, String columnName, String dataType, String value) {
@@ -207,8 +256,23 @@ public class RecordManager implements IRecordManager{
 		mt.clearSlot(index);
 		mt.saveTableMetaData();
 		mt.closeTableFile();
+		
+		IndexManager im = new IndexManager();
+		try {
+			for(int i = 0; i < mt.isKey.length; i++)
+			{
+				if(mt.isKey[i])
+				{
+					BTree bt;
+					bt = (BTree) im.openBTree(tableName + "_" + mt.columnNames[i]);
+					im.deleteKey(bt, Integer.parseInt(r.getValues()[i]));
+					im.closeBTree(bt);
+				}
+			}
+		} catch (AbstractIndexManagerException e) {
+			e.printStackTrace();
+		}
 	}
-
 		
 	@Override
 	public void updateRecord(AbstractRecord r, String tableName) throws AbstractRecordManagerException {
@@ -232,8 +296,27 @@ public class RecordManager implements IRecordManager{
 				b.setData(array);
 				sm.writeBlock(index.getBlockNumber() +1, mt.dbFile, b);
 				mt.closeTableFile();
+				
+				IndexManager im = new IndexManager();
+				
+				for(int i = 0; i < mt.isKey.length; i++)
+				{
+					if(mt.isKey[i])
+					{
+						BTree bt = (BTree) im.openBTree(tableName + "_" + mt.columnNames[i]);
+						im.deleteKey(bt, Integer.parseInt(r.getValues()[i]));
+						im.insertKey(bt, Integer.parseInt(r.getValues()[i]), index);
+						im.closeBTree(bt);
+					}
+				}
+				
 	       } catch (IOException e) {
 				e.printStackTrace();
+		} catch (NumberFormatException e) {
+			e.printStackTrace();
+		} catch (AbstractIndexManagerException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		} 
 	}
 
@@ -262,7 +345,22 @@ public class RecordManager implements IRecordManager{
 			mt.fillSlot(index);
 			mt.saveTableMetaData();
 			mt.closeTableFile();
+			
+			IndexManager im = new IndexManager();
+			
+			for(int i = 0; i < mt.isKey.length; i++)
+			{
+				if(mt.isKey[i])
+				{
+					BTree bt = (BTree) im.openBTree(tableName + "_" + mt.columnNames[i]);
+					im.insertKey(bt, Integer.parseInt(r.getValues()[i]), index);
+					im.closeBTree(bt);
+				}
+			}
+			
 		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (AbstractIndexManagerException e) {
 			e.printStackTrace();
 		} 
        
@@ -270,8 +368,23 @@ public class RecordManager implements IRecordManager{
 
 	@Override
 	public void createIndex(String tableName, String columnName) throws AbstractRecordManagerException {
-		// TODO Auto-generated method stub
 		
+		IndexManager im =  new IndexManager();
+		
+		BufferedReader reader;
+		int n = 0;
+		try {
+			reader = Files.newBufferedReader(Paths.get(System.getProperty("user.dir") + "/conf/minidb.config"));
+			reader.readLine();
+			n = Integer.parseInt(reader.readLine().split("=")[1]);
+			reader.close();
+			
+			im.createBTree(tableName + "_" + columnName, n);
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (AbstractIndexManagerException e) {
+			e.printStackTrace();
+		}	
 	}
 
 }
