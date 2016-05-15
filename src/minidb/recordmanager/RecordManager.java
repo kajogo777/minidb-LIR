@@ -182,37 +182,36 @@ public class RecordManager implements IRecordManager{
 
 	@Override
 	public AbstractRecord getRecord(String tableName, RecordID rid)
-			throws AbstractRecordManagerException {	
-		return null;
-	}
-	
-	public AbstractRecord getRecord(String tableName, String columnName, Integer key) throws AbstractRecordManagerException {		
+			throws AbstractRecordManagerException {
 		MetaData mt = openTable(tableName);
 		StorageManager sm = new StorageManager();
-		IndexManager im = new IndexManager();
-		
+		Block b;
 		try {
-			BTree bt = (BTree) im.openBTree(tableName + "_" + columnName);
-			RecordID rid = im.findKey(bt, key);
-			
-			if(rid != null)
-			{
-				Block b = (Block) sm.readBlock(rid.getBlockNumber()+1, mt.dbFile);
-				byte[] block = b.getData();
-	
-				String[] values = mt.valuesToString(Arrays.copyOfRange(block, (rid.getSlotNumber()*mt.slotSize), (rid.getSlotNumber()*mt.slotSize)+mt.slotSize));
-
-				return new Record(mt.columnNames, mt.dataTypes, values, mt.references, rid);
-			}
-		} catch (AbstractIndexManagerException e) {
-			e.printStackTrace();
+			b = (Block) sm.readBlock(rid.getBlockNumber()+1, mt.dbFile);
+			byte[] block = b.getData();
+			String[] values = mt.valuesToString(Arrays.copyOfRange(block, (rid.getSlotNumber()*mt.slotSize), (rid.getSlotNumber()*mt.slotSize)+mt.slotSize));
+			return new Record(mt.columnNames, mt.dataTypes, values, mt.references, rid);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		return null;
 	}
 	
-
+	public AbstractRecord getRecord(String tableName, String columnName, Integer key) throws AbstractRecordManagerException {		
+		IndexManager im = new IndexManager();		
+		try {
+			BTree bt = (BTree) im.openBTree(tableName + "_" + columnName);
+			RecordID rid = im.findKey(bt, key);
+			
+			if(rid != null)
+				return getRecord(tableName, rid);
+			
+		} catch (AbstractIndexManagerException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
 
 	@Override
 	public AbstractRecord[] getRecord(String tableName, String columnName, String dataType, String value) {
