@@ -332,7 +332,7 @@ public class IndexManager implements IIndexManager{
 		try {
 			DBFile indexFile = (DBFile) sm.openFile(filePath);
 			BTree bt = new BTree(n);
-			
+			bt.setFileName(filePath);
 			Node root = getNode(indexFile, 0, n);
 			connectLeaves(root);
 			
@@ -351,18 +351,19 @@ public class IndexManager implements IIndexManager{
 		int offset = 0;
 		Node result = null;
 
-		if(curBlck.getData()[offset++] == 0)//if node is inner node
+		if(curBlck.getData()[offset++] == 1)//if node is inner node
 		{
 			InnerNode n = new InnerNode(degree);
 			n.setKeysN(ByteBuffer.wrap(Arrays.copyOfRange(curBlck.getData(), offset, offset+4)).getInt());
 			offset += 4;
 			
+
 			//populate keys
 			for(int i = 0; i < n.getKeysN(); offset+= 4, i++)
 			{
 				n.getKeys()[i] = ByteBuffer.wrap(Arrays.copyOfRange(curBlck.getData(), offset, offset+4)).getInt();
 			}
-			
+				
 			//populate children
 			for(int i = 0; i < n.getKeysN()+1; offset+= 4, i++)
 			{
@@ -420,7 +421,7 @@ public class IndexManager implements IIndexManager{
 	public void closeBTree(AbstractBTree t) throws AbstractIndexManagerException {
 		StorageManager sm = new StorageManager();
 		try {
-			
+
 			DBFile indexFile = (DBFile) sm.openFile(((BTree)t).getFileName());
 			int blckN = 1;
 			int curBlck = 0;
@@ -448,7 +449,7 @@ public class IndexManager implements IIndexManager{
 
 				if(node instanceof InnerNode)
 				{	
-					blk.getData()[0] = 0;
+					blk.getData()[0] = 1;
 					
 					for(int i = 0; i < node.getKeysN()+1; i++)
 					{
@@ -461,7 +462,7 @@ public class IndexManager implements IIndexManager{
 					
 				}else{
 					
-					blk.getData()[0] = 1;
+					blk.getData()[0] = 0;
 					
 					for(int i = 0; i < node.getKeysN(); i++)
 					{
@@ -553,7 +554,7 @@ public class IndexManager implements IIndexManager{
 
 	@Override
 	public void insertKey(AbstractBTree t, Integer key, RecordID r) throws AbstractIndexManagerException {
-		
+
 		Node ret = insertHelper( ((BTree)t).getRoot(), key, r );
 		
 		if(ret != null)

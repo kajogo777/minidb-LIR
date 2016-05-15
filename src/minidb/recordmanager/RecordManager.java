@@ -32,7 +32,7 @@ public class RecordManager implements IRecordManager{
 		
 		//insert
 		String[] mahmoudValues = {"3", "mahmoud", "20"};
-		for(int i = 1; i <= 8300; i++)//8400
+		for(int i = 1; i <= 100; i++)//8400
 		{
 			mahmoudValues[0] = "" + i;
 			mahmoudValues[2] = "" + 20;
@@ -53,6 +53,7 @@ public class RecordManager implements IRecordManager{
 		
 		//insert
 		Record r = new Record( columnNames, dataTypes, mahmoudValues, references, null);
+		r.values[0] = "500";
 		rm.insertRecord(r, "Student");
 		
 		//get
@@ -62,6 +63,17 @@ public class RecordManager implements IRecordManager{
 					rec.getColumnNames()[0],rec.getValues()[0],
 					rec.getColumnNames()[2],rec.getValues()[2],
 					rec.getColumnNames()[1],rec.getValues()[1]);		
+		
+		//get using index
+		Record rec = (Record) rm.getRecord("Student", "id", 500);
+		
+		if(rec != null)
+		System.out.printf("record with id 500: < %s: %s, %s: %s, %s: %s >\n",
+				rec.getColumnNames()[0],rec.getValues()[0],
+				rec.getColumnNames()[2],rec.getValues()[2],
+				rec.getColumnNames()[1],rec.getValues()[1]);
+		else
+			System.out.println("record not found");
 		
 		//drop table
 		//rm.dropTable("Student");
@@ -170,7 +182,7 @@ public class RecordManager implements IRecordManager{
 
 	@Override
 	public AbstractRecord getRecord(String tableName, RecordID rid)
-			throws AbstractRecordManagerException {		
+			throws AbstractRecordManagerException {	
 		return null;
 	}
 	
@@ -183,12 +195,15 @@ public class RecordManager implements IRecordManager{
 			BTree bt = (BTree) im.openBTree(tableName + "_" + columnName);
 			RecordID rid = im.findKey(bt, key);
 			
-			Block b = (Block) sm.readBlock(rid.getBlockNumber(), mt.dbFile);
-			byte[] block = b.getData();
+			if(rid != null)
+			{
+				Block b = (Block) sm.readBlock(rid.getBlockNumber()+1, mt.dbFile);
+				byte[] block = b.getData();
+	
+				String[] values = mt.valuesToString(Arrays.copyOfRange(block, (rid.getSlotNumber()*mt.slotSize), (rid.getSlotNumber()*mt.slotSize)+mt.slotSize));
 
-			String[] values = mt.valuesToString(Arrays.copyOfRange(block, (rid.getSlotNumber()*mt.slotSize), (rid.getSlotNumber()*mt.slotSize)+mt.slotSize));
-			
-			return new Record(mt.columnNames,mt.dataTypes, values,mt.references,rid);	
+				return new Record(mt.columnNames, mt.dataTypes, values, mt.references, rid);
+			}
 		} catch (AbstractIndexManagerException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -320,6 +335,7 @@ public class RecordManager implements IRecordManager{
 		} 
 	}
 
+	
 	@Override
 	public void insertRecord(AbstractRecord r, String tableName) throws AbstractRecordManagerException {
        MetaData mt = openTable(tableName);	
